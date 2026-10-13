@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MBTI 人格分析 · 绿老头 = INFJ</title>
+<style>
+  :root {
+    --bg: #f3f8f4;
+    --ink: #1f3a2c;
+    --muted: #5d7a6a;
+    --green: #2f9e6a;
+    --green-deep: #1d6b47;
+    --green-soft: #dff2e7;
+    --card: #ffffff;
+    --warn: #c9822b;
+    --warn-soft: #fbf0e1;
+    --radius: 20px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.75;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 18px 60px; }
+
+  /* Hero */
+  .hero {
+    background: radial-gradient(circle at 20% 10%, #5cc792 0%, var(--green) 40%, var(--green-deep) 100%);
+    color: #fff;
+    border-radius: 0 0 36px 36px;
+    padding: 42px 22px 34px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::after {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: radial-gradient(rgba(255,255,255,.12) 1.5px, transparent 1.5px);
+    background-size: 22px 22px;
+    pointer-events: none;
+  }
+  .hero .series { font-size: 13px; letter-spacing: 4px; opacity: .85; }
+  .avatar { width: 150px; height: 150px; margin: 16px auto 10px; display: block; filter: drop-shadow(0 10px 18px rgba(0,0,0,.25)); }
+  .hero h1 { font-size: 34px; line-height: 1.3; font-weight: 800; }
+  .hero h1 .eq { opacity: .7; margin: 0 6px; font-weight: 400; }
+  .hero .type {
+    display: inline-block; margin-top: 10px;
+    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35);
+    padding: 4px 16px; border-radius: 999px; font-size: 14px; letter-spacing: 2px;
+  }
+  .tags { margin-top: 18px; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; position: relative; z-index: 1; }
+  .tags span { background: #fff; color: var(--green-deep); font-size: 13px; font-weight: 600; padding: 4px 12px; border-radius: 999px; }
+
+  /* Sections */
+  section { margin-top: 30px; }
+  .sec-title { display: flex; align-items: center; gap: 10px; font-size: 21px; font-weight: 800; margin-bottom: 14px; }
+  .sec-title .num {
+    width: 30px; height: 30px; border-radius: 10px; background: var(--green); color: #fff;
+    display: grid; place-items: center; font-size: 15px;
+  }
+  .card { background: var(--card); border-radius: var(--radius); padding: 20px; box-shadow: 0 4px 20px rgba(31,58,44,.06); }
+
+  /* Function stack */
+  .func { display: grid; grid-template-columns: 74px 1fr; gap: 14px; padding: 16px 0; border-bottom: 1px dashed #d5e6dc; }
+  .func:last-child { border-bottom: none; padding-bottom: 0; }
+  .func:first-child { padding-top: 0; }
+  .badge {
+    border-radius: 16px; background: var(--green-soft); color: var(--green-deep);
+    text-align: center; padding: 10px 4px; align-self: start;
+  }
+  .badge b { display: block; font-size: 22px; line-height: 1.1; }
+  .badge small { font-size: 11px; }
+  .func h3 { font-size: 16px; margin-bottom: 4px; }
+  .func h3 em { font-style: normal; font-size: 12px; color: #fff; background: var(--green); border-radius: 6px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+  .func p { font-size: 14.5px; color: var(--muted); }
+  .bar { height: 8px; background: #e8f1ec; border-radius: 99px; margin: 6px 0 8px; overflow: hidden; }
+  .bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #5cc792, var(--green-deep)); width: 0; transition: width 1.2s cubic-bezier(.2,.8,.2,1); }
+  .func.low .badge { background: #eef1ef; color: #6f8578; }
+
+  /* Lists */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 620px) { .grid2 { grid-template-columns: 1fr; } }
+  .list-card h3 { font-size: 17px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+  .list-card ul { list-style: none; }
+  .list-card li { position: relative; padding-left: 22px; font-size: 14.5px; margin-bottom: 10px; }
+  .list-card li:last-child { margin-bottom: 0; }
+  .list-card li::before { position: absolute; left: 0; top: 0; }
+  .good { border-top: 5px solid var(--green); }
+  .good li::before { content: "✓"; color: var(--green); font-weight: 800; }
+  .bad { border-top: 5px solid var(--warn); }
+  .bad h3 { color: #9a5f17; }
+  .bad li::before { content: "!"; color: #fff; background: var(--warn); width: 15px; height: 15px; border-radius: 50%; font-size: 11px; font-weight: 800; text-align: center; line-height: 15px; top: 5px; }
+  .list-card li b { color: var(--ink); }
+
+  /* Relationship */
+  .rel { display: grid; gap: 12px; }
+  .rel-item { display: flex; gap: 14px; align-items: flex-start; }
+  .rel-icon { flex: none; width: 44px; height: 44px; border-radius: 14px; background: var(--green-soft); display: grid; place-items: center; font-size: 22px; }
+  .rel-item h4 { font-size: 15.5px; }
+  .rel-item p { font-size: 14.5px; color: var(--muted); }
+
+  .quote {
+    margin-top: 14px; background: var(--green-soft); border-left: 4px solid var(--green);
+    border-radius: 12px; padding: 12px 16px; font-size: 14.5px; color: var(--green-deep);
+  }
+
+  /* Self test */
+  .check { display: grid; gap: 8px; }
+  .check label {
+    display: flex; gap: 10px; align-items: center; cursor: pointer;
+    background: #f7faf8; border: 1.5px solid transparent; border-radius: 12px; padding: 10px 12px; font-size: 14.5px;
+    transition: all .2s;
+  }
+  .check input { accent-color: var(--green); width: 18px; height: 18px; flex: none; }
+  .check label:has(input:checked) { border-color: var(--green); background: var(--green-soft); }
+  .result { margin-top: 14px; text-align: center; font-weight: 700; color: var(--green-deep); min-height: 28px; }
+
+  /* Summary */
+  .summary {
+    margin-top: 30px; text-align: center; color: #fff; border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--green) 0%, var(--green-deep) 100%);
+    padding: 26px 20px;
+  }
+  .summary .big { font-size: 22px; font-weight: 800; margin-bottom: 12px; }
+  .summary .kw { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px; }
+  .summary .kw span { background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.35); border-radius: 12px; padding: 8px 14px; font-weight: 700; }
+  .summary p { margin-top: 14px; font-size: 14px; opacity: .9; }
+
+  footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 26px; }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .reveal.show { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { opacity: 1; transform: none; transition: none; }
+    .bar i { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="series">MBTI 人格分析之</div>
+  <svg class="avatar" viewBox="0 0 160 160" aria-hidden="true">
+    <circle cx="80" cy="80" r="76" fill="#e9f8ef"/>
+    <!-- robe -->
+    <path d="M30 150c4-34 24-52 50-52s46 18 50 52z" fill="#3f8f63"/>
+    <path d="M80 98l-10 52h20z" fill="#2c6e4a"/>
+    <!-- head -->
+    <ellipse cx="80" cy="66" rx="30" ry="32" fill="#8fd9a8"/>
+    <!-- hair tufts -->
+    <path d="M50 58c-6-10-2-20 6-22-2 8 2 12 4 14zM110 58c6-10 2-20-6-22 2 8-2 12-4 14z" fill="#f2f5f3"/>
+    <!-- brows -->
+    <path d="M62 56q7-6 14 0M84 56q7-6 14 0" stroke="#f2f5f3" stroke-width="5" stroke-linecap="round" fill="none"/>
+    <!-- calm eyes -->
+    <path d="M64 66q5 4 10 0M86 66q5 4 10 0" stroke="#1f3a2c" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <!-- beard -->
+    <path d="M56 76c2 26 12 40 24 46 12-6 22-20 24-46-8 6-16 8-24 8s-16-2-24-8z" fill="#f2f5f3"/>
+    <path d="M72 82q8 5 16 0" stroke="#c9d3cd" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <!-- third-eye spark (Ni) -->
+    <path d="M80 38l3 6 6 1-5 4 1 6-5-3-5 3 1-6-5-4 6-1z" fill="#ffd66b"/>
+  </svg>
+  <h1>绿老头<span class="eq">=</span>INFJ</h1>
+  <div class="type">提倡者 · Advocate</div>
+  <div class="tags">
+    <span>共情</span><span>洞察人心</span><span>理想主义</span><span>重精神</span>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="reveal">
+    <div class="sec-title"><span class="num">1</span>认知功能栈</div>
+    <div class="card">
+      <div class="func">
+        <div class="badge"><b>Ni</b><small>内倾直觉</small></div>
+        <div>
+          <h3>主导功能 <em>最强</em></h3>
+          <div class="bar"><i data-w="95%"></i></div>
+          <p>一眼看透别人的动机、潜台词，擅长预判事情走向。别人还在看表面，他已经看到背后的<b>底层逻辑和人心</b>。内心世界极其丰富，经常思考人生、意义、人性。</p>
+        </div>
+      </div>
+      <div class="func">
+        <div class="badge"><b>Fe</b><small>外倾情感</small></div>
+        <div>
+          <h3>辅助功能</h3>
+          <div class="bar"><i data-w="80%"></i></div>
+          <p>共情力极强，能感知别人情绪，很会照顾别人感受。但<b>不是讨好，是本能的洞察</b>。也因此很容易吸收别人的负面情绪，容易内耗。</p>
+        </div>
+      </div>
+      <div class="func low">
+        <div class="badge"><b>Ti</b><small>内倾思考</small></div>
+        <div>
+          <h3>第三功能</h3>
+          <div class="bar"><i data-w="50%"></i></div>
+          <p>内心有一套<b>自己的逻辑体系</b>，对事情有独立判断，不轻易被说服。</p>
+        </div>
+      </div>
+      <div class="func low">
+        <div class="badge"><b>Se</b><small>外倾感觉</small></div>
+        <div>
+          <h3>劣势功能</h3>
+          <div class="bar"><i data-w="22%"></i></div>
+          <p>现实生活容易<b>摆烂</b>，不太擅长处理琐碎的现实杂事。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <div class="sec-title"><span class="num">2</span>绿老头典型画像</div>
+    <div class="grid2">
+      <div class="card list-card good">
+        <h3>✅ 优点</h3>
+        <ul>
+          <li><b>洞察力超强</b>，看人很准，能读懂别人没说出口的话</li>
+          <li><b>善良有理想</b>，追求精神共鸣，不喜欢肤浅社交</li>
+          <li><b>专一深情</b>，对待亲密关系很认真，看重灵魂契合</li>
+          <li><b>温柔但有原则</b>，底线绝不退让</li>
+        </ul>
+      </div>
+      <div class="card list-card bad">
+        <h3>⚠️ 短板 / 内耗点</h3>
+        <ul>
+          <li><b>想太多</b>，反复复盘过去，精神内耗重</li>
+          <li><b>外表温和，内心疏离</b>，很难完全信任、真正敞开心扉</li>
+          <li><b>习惯藏情绪</b>，很少诉苦，看着成熟，其实很累</li>
+          <li><b>讨厌虚伪套路</b>，世俗人情世故让他疲惫</li>
+          <li><b>共情别人</b>，却常常忽略自己的感受</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <div class="sec-title"><span class="num">3</span>人际 &amp; 恋爱特点</div>
+    <div class="card rel">
+      <div class="rel-item">
+        <div class="rel-icon">🎭</div>
+        <div>
+          <h4>社交是“表演”</h4>
+          <p>只留少数真正懂自己的人，大部分人只能看到他温和礼貌的外壳。</p>
+        </div>
+      </div>
+      <div class="rel-item">
+        <div class="rel-icon">💚</div>
+        <div>
+          <h4>恋爱：极度看重灵魂共鸣</h4>
+          <p>不喜欢快餐恋爱。一旦认定一个人会非常真诚；但如果感觉精神不合，会果断抽身。</p>
+        </div>
+      </div>
+      <div class="rel-item">
+        <div class="rel-icon">🌫️</div>
+        <div>
+          <h4>神秘、难懂</h4>
+          <p>很容易被人觉得捉摸不透，别人很难走进他的内心。</p>
+        </div>
+      </div>
+      <div class="quote">走进绿老头内心的方式：不用套路，给真诚；不催他敞开，给他安全感。</div>
+    </div>
+  </section>
+
+  <section class="reveal">
+    <div class="sec-title"><span class="num">4</span>你是绿老头吗？</div>
+    <div class="card">
+      <div class="check" id="check">
+        <label><input type="checkbox">别人话还没说完，我已经猜到他想说什么</label>
+        <label><input type="checkbox">睡前会反复复盘白天某句话说得对不对</label>
+        <label><input type="checkbox">朋友不多，但每个都是能聊灵魂的那种</label>
+        <label><input type="checkbox">很会安慰别人，自己难过却谁也不说</label>
+        <label><input type="checkbox">一到饭局、客套场合就电量告急</label>
+        <label><input type="checkbox">表面好说话，真触碰底线会直接关门</label>
+        <label><input type="checkbox">脑子里想得很宏大，现实的琐事一拖再拖</label>
+      </div>
+      <div class="result" id="result">勾一勾，看看你有多“绿”</div>
+    </div>
+  </section>
+
+  <div class="summary reveal">
+    <div class="big">绿老头 INFJ</div>
+    <div class="kw"><span>共情</span><span>洞察人心</span><span>理想主义</span><span>重精神</span></div>
+    <p>看透一切，依然温柔；世界很吵，他只想找到懂他的人。</p>
+  </div>
+
+  <footer>MBTI 仅供娱乐与自我探索参考 · 人不应被四个字母定义</footer>
+</main>
+
+<script>
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('show');
+      e.target.querySelectorAll('.bar i').forEach((b) => { b.style.width = b.dataset.w; });
+      io.unobserve(e.target);
+    });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.reveal').forEach((el) => io.observe(el));
+
+  const boxes = document.querySelectorAll('#check input');
+  const result = document.getElementById('result');
+  const verdicts = [
+    '勾一勾，看看你有多“绿”',
+    '有一点点绿，偶尔深沉一下',
+    '有一点点绿，偶尔深沉一下',
+    '绿意渐浓，你身上有 INFJ 的影子',
+    '绿意渐浓，你身上有 INFJ 的影子',
+    '相当绿了！大概率是 INFJ 本人',
+    '相当绿了！大概率是 INFJ 本人',
+    '纯正绿老头认证 🟢 记得也照顾好自己'
+  ];
+  boxes.forEach((b) => b.addEventListener('change', () => {
+    const n = [...boxes].filter((x) => x.checked).length;
+    result.textContent = n ? `${n}/7 · ${verdicts[n]}` : verdicts[0];
+  }));
+</script>
+</body>
+</html>
