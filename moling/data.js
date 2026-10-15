@@ -290,6 +290,65 @@ const MOLING = {
     ]
   },
 
+  ep02: {
+    title: '第二集 · 团团会说话了',
+    word: '春',
+    duration: '约 88 秒',
+    cast: { luming: '旁白', xiaoyan: '小砚', tuantuan: '团团', mo: '墨先生' },
+    shots: [
+      {
+        id: 'S1', sec: 11, img: 'assets/ep02/s1-willow.jpg',
+        visual: '灰雾退去的清晨，桥边的老柳树褪成了灰色线稿；小砚和团团站在河边抬头看。',
+        lines: ['鹿鸣：灰雾走后的第二天早上，桥边的老柳树，变成了一棵没有颜色的线稿。', '团团：团团？团团？'],
+        en: ['Lu Ming: The morning after the mist, the old willow by the bridge had turned into a colorless sketch.', 'Tuantuan: Tuantuan? Tuantuan?'],
+        prompt: 'Early morning in the water town after the mist; the old willow by the stone bridge is only pale grey sketch lines. The girl slowly looks up; the white puffball tilts left and right and gives one worried hop. Slow push-in.'
+      },
+      {
+        id: 'S2', sec: 12, img: 'assets/ep02/s2-scroll.jpg',
+        visual: '画室里，墨先生指着长卷上一个褪色的字；小砚握紧大毛笔。',
+        lines: ['墨先生：柳树忘了自己的名字。人们忘了一个字——春。', '小砚：那我把它写回来！'],
+        en: ['Mr. Mo: The willow has forgotten its name. People forgot a word: spring.', 'Xiao Yan: Then I\'ll write it back!'],
+        prompt: 'The tall scholar taps a faded grey character on the long scroll; it fades a little more. The girl clenches her giant brush and nods firmly; the puffball leans toward the scroll.'
+      },
+      {
+        id: 'S3', sec: 11, img: 'assets/ep02/s3-practice.jpg',
+        visual: '满地都是写着"春"的宣纸，小砚气鼓鼓；团团学她的样子一起泄气。',
+        lines: ['鹿鸣：小砚写了一遍又一遍，可柳树，还是灰的。', '小砚：我再写一遍！'],
+        en: ['Lu Ming: Xiao Yan wrote it again and again, but the willow stayed grey.', 'Xiao Yan: I\'ll write it one more time!'],
+        prompt: 'The girl among many sheets of brush-written characters writes one more, waits hopefully, then slumps; the puffball copies every move at the same moment.'
+      },
+      {
+        id: 'S4', sec: 12, img: 'assets/ep02/s4-teach.jpg',
+        visual: '书桌前，小砚一字一字教团团发音；团团憋红了脸，只发出"吹……嗯？"',
+        lines: ['墨先生：字写下来还不够，还要有人把它念出来。', '小砚：团团，跟我说——春。春。', '团团：吹……吹嗯？'],
+        en: ['Mr. Mo: Writing a word is not enough. Someone has to say it out loud.', 'Xiao Yan: Tuantuan, say it with me: chūn. Chūn.', 'Tuantuan: Chu... chu-en?'],
+        prompt: 'The girl slowly mouths one word to the puffball; it squeezes its eyes, tries, makes a tiny wrong sound and tilts sideways in confusion; she giggles.'
+      },
+      {
+        id: 'S5', sec: 12, img: 'assets/ep02/s5-chun.jpg',
+        visual: '团团在桥边跳起来大喊"春！"，墨字化作墨带飞进柳树，绿色从树干一路爬到枝梢。',
+        lines: ['团团：春！', '鹿鸣：团团学会的第一个字，就是春。'],
+        en: ['Tuantuan: Chūn!', 'Lu Ming: The very first word Tuantuan learned was "spring".'],
+        prompt: 'The puffball bounces and shouts; the glowing ink character dissolves into ribbons that swirl into the willow; fresh green climbs from trunk to every strand and spreads along the canal.'
+      },
+      {
+        id: 'S6', sec: 11, img: 'assets/ep02/s6-spring.jpg',
+        visual: '青墨镇一片春色，大绒、阿灯、呱掌柜欢呼；远处屋檐上，撑伞人静静看着，一片柳叶落在伞上。',
+        lines: ['鹿鸣：那天，青墨镇找回了第一个字。远处的屋檐上，那个撑伞的人，也看见了。'],
+        en: ['Lu Ming: That day, Qingmo Town found its first lost word. And on a distant rooftop, the one with the umbrella saw it too.'],
+        prompt: 'Spring by the canal: the toad claps, the guardian beast smiles, the rabbit waves his lantern. Camera pans up to the umbrella figure on a far rooftop; a willow leaf lands on his umbrella.'
+      },
+      {
+        id: 'S7', sec: 12, img: 'assets/ep02/s7-depart.jpg',
+        visual: '镇门口，墨先生挥手送别；小砚扛着大毛笔、大绒顶着团团，走向远处的春市。',
+        lines: ['墨先生：去春市吧。下一个字，在那里等你们。', '团团：团团会了！出发！'],
+        en: ['Mr. Mo: Go to the Spring Market. The next word is waiting for you there.', 'Tuantuan: Tuantuan can do it! Let\'s go!'],
+        prompt: 'At the town gate the scholar waves goodbye; the girl with her giant brush and the guardian beast with the puffball on his head walk out toward a distant colorful spring market.'
+      }
+    ],
+    lesson: { hanzi: '春', pinyin: 'chūn', meaning: 'spring', words: [['春天', 'chūntiān', 'spring (season)'], ['春节', 'Chūnjié', 'Spring Festival']], line: '小砚：今天的字：春。春天，春节。你也说一遍吧！' }
+  },
+
   teachingSeries: {
     name: '墨灵课堂',
     nameEn: 'Ink Spirits Classroom',

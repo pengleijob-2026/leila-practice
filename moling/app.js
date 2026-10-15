@@ -14,7 +14,7 @@ $('w-theme').textContent = M.world.theme;
 $('places').innerHTML = M.world.places
   .map((p) => `<div class="place"><b>${esc(p.name)}</b><span>${esc(p.py)}</span><p>${esc(p.desc)}</p></div>`).join('');
 
-$('shots').innerHTML = M.ep01.shots.map((s) => `
+const renderShots = (shots) => shots.map((s) => `
   <article class="shot">
     <img src="${s.img}" alt="${s.id}" loading="lazy" />
     <div>
@@ -25,6 +25,16 @@ $('shots').innerHTML = M.ep01.shots.map((s) => `
       <details><summary>AI 视频提示词</summary><code>${esc(s.prompt)}</code></details>
     </div>
   </article>`).join('');
+$('shots').innerHTML = renderShots(M.ep01.shots);
+$('shots2').innerHTML = renderShots(M.ep02.shots);
+const L = M.ep02.lesson;
+$('lesson2').innerHTML = `
+  <span class="hz">${esc(L.hanzi)}</span>
+  <div>
+    <b>墨灵小课堂 · 今天的字</b>
+    <p><span class="py">${esc(L.pinyin)}</span> ${esc(L.meaning)}</p>
+    <p>${L.words.map(([zh, py, en]) => `${esc(zh)} <span class="py">${esc(py)}</span> ${esc(en)}`).join('　·　')}</p>
+  </div>`;
 
 $('castGrid').innerHTML = M.characters.map((c) => `
   <button class="card" data-id="${c.id}">
