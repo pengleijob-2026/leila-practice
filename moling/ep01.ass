@@ -1,0 +1,59 @@
+[Script Info]
+ScriptType: v4.00+
+PlayResX: 1280
+PlayResY: 720
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: ZH,WenQuanYi Micro Hei,38,&H00FFFFFF,&H00FFFFFF,&H00303030,&H64000000,0,0,0,0,100,100,2,0,1,2.2,1,2,60,60,62,1
+Style: EN,WenQuanYi Micro Hei,22,&H00E8E8E8,&H00E8E8E8,&H00303030,&H64000000,0,0,0,0,100,100,0,0,1,1.6,0,2,60,60,30,1
+Style: TITLE,WenQuanYi Micro Hei,96,&H00FFFFFF,&H00FFFFFF,&H00404040,&H64000000,1,0,0,0,100,100,12,0,1,3,2,5,60,60,0,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.50,0:00:03.40,ZH,,0,0,0,,九百年前，一位老画师用了一生，
+Dialogue: 0,0:00:00.50,0:00:03.40,EN,,0,0,0,,Nine hundred years ago, an old painter spent his whole life
+Dialogue: 0,0:00:03.50,0:00:06.40,ZH,,0,0,0,,画了一幅很长很长的画——《万灵图》。
+Dialogue: 0,0:00:03.50,0:00:06.40,EN,,0,0,0,,painting one very long scroll: The Painting of Ten Thousand Spirits.
+Dialogue: 0,0:00:06.50,0:00:09.40,ZH,,0,0,0,,画里有一座小镇，叫青墨镇。
+Dialogue: 0,0:00:06.50,0:00:09.40,EN,,0,0,0,,Inside it lies a little town called Qingmo.
+Dialogue: 0,0:00:10.50,0:00:13.73,ZH,,0,0,0,,在青墨镇，被叫出名字的东西，才会活过来。
+Dialogue: 0,0:00:10.50,0:00:13.73,EN,,0,0,0,,In Qingmo Town, only things that are called by name come alive.
+Dialogue: 0,0:00:13.83,0:00:17.06,ZH,,0,0,0,,墨先生是长卷的守护人，小砚是他的徒弟。
+Dialogue: 0,0:00:13.83,0:00:17.06,EN,,0,0,0,,Mr. Mo guards the scroll; Xiao Yan is his apprentice.
+Dialogue: 0,0:00:17.16,0:00:20.40,ZH,,0,0,0,,有一天，小砚滴下了一滴墨——它变成了团团。
+Dialogue: 0,0:00:17.16,0:00:20.40,EN,,0,0,0,,One day she spilled a drop of ink... and it became Tuantuan.
+Dialogue: 0,0:00:21.50,0:00:24.06,ZH,,0,0,0,,守在镇门口的，是大绒。
+Dialogue: 0,0:00:21.50,0:00:24.06,EN,,0,0,0,,Guarding the town gate is Da Rong.
+Dialogue: 0,0:00:24.16,0:00:26.73,ZH,,0,0,0,,他说话很慢，睡觉很多，
+Dialogue: 0,0:00:24.16,0:00:26.73,EN,,0,0,0,,He talks slowly and sleeps a lot,
+Dialogue: 0,0:00:26.83,0:00:29.40,ZH,,0,0,0,,可谁也别想欺负青墨镇。
+Dialogue: 0,0:00:26.83,0:00:29.40,EN,,0,0,0,,but nobody messes with Qingmo Town.
+Dialogue: 0,0:00:30.50,0:00:33.40,ZH,,0,0,0,,夜市里最吵的两位：开灯笼铺的阿灯，
+Dialogue: 0,0:00:30.50,0:00:33.40,EN,,0,0,0,,The two loudest folks at the night market: A Deng of the lantern shop
+Dialogue: 0,0:00:33.50,0:00:36.40,ZH,,0,0,0,,和开当铺的呱掌柜。
+Dialogue: 0,0:00:33.50,0:00:36.40,EN,,0,0,0,,and Shopkeeper Gua of the pawnshop.
+Dialogue: 0,0:00:36.50,0:00:39.40,ZH,,0,0,0,,他们天天吵架，也天天一起吃宵夜。
+Dialogue: 0,0:00:36.50,0:00:39.40,EN,,0,0,0,,They argue every day, and eat late-night snacks together every day.
+Dialogue: 0,0:00:40.50,0:00:43.73,ZH,,0,0,0,,鹤翁是长卷里最老的一位，他见过画师本人。
+Dialogue: 0,0:00:40.50,0:00:43.73,EN,,0,0,0,,Elder He is the oldest one in the scroll; he once met the painter himself.
+Dialogue: 0,0:00:43.83,0:00:47.06,ZH,,0,0,0,,而我，是鹿鸣——
+Dialogue: 0,0:00:43.83,0:00:47.06,EN,,0,0,0,,And I am Lu Ming,
+Dialogue: 0,0:00:47.16,0:00:50.40,ZH,,0,0,0,,一个走遍长卷、讲故事的人。
+Dialogue: 0,0:00:47.16,0:00:50.40,EN,,0,0,0,,a storyteller who has walked the whole scroll.
+Dialogue: 0,0:00:51.50,0:00:54.40,ZH,,0,0,0,,可是最近，长卷开始褪色。
+Dialogue: 0,0:00:51.50,0:00:54.40,EN,,0,0,0,,But lately, the scroll has begun to fade.
+Dialogue: 0,0:00:54.50,0:00:57.40,ZH,,0,0,0,,人们忘了一个字，画里就少一种颜色。
+Dialogue: 0,0:00:54.50,0:00:57.40,EN,,0,0,0,,Each time people forget a word, the painting loses a color.
+Dialogue: 0,0:00:57.50,0:01:00.40,ZH,,0,0,0,,灰雾里，总有一个撑伞的人……
+Dialogue: 0,0:00:57.50,0:01:00.40,EN,,0,0,0,,And in the grey mist, there is always someone with an umbrella...
+Dialogue: 0,0:01:00.50,0:01:03.40,ZH,,0,0,0,,没有人知道，他叫什么名字。
+Dialogue: 0,0:01:00.50,0:01:03.40,EN,,0,0,0,,No one knows his name.
+Dialogue: 0,0:01:04.50,0:01:09.40,ZH,,0,0,0,,九个角色，一幅长卷，一个被忘记的名字。
+Dialogue: 0,0:01:04.50,0:01:09.40,EN,,0,0,0,,Nine characters, one scroll, one forgotten name.
+Dialogue: 0,0:01:09.50,0:01:14.40,ZH,,0,0,0,,这一次，我们要把失落的字，一个一个找回来。
+Dialogue: 0,0:01:09.50,0:01:14.40,EN,,0,0,0,,This time, we will find the lost words, one by one.
+Dialogue: 0,0:01:14.50,0:01:19.40,ZH,,0,0,0,,《墨灵记》——被记住的，就不会消失。
+Dialogue: 0,0:01:14.50,0:01:19.40,EN,,0,0,0,,The Ink Spirits: what is remembered never fades.
+Dialogue: 1,0:00:00.40,0:00:04.20,TITLE,,0,0,0,,{\fad(600,600)}墨灵记\N{\fs34\fsp2}The Ink Spirits · 第一集 · 长卷醒了
+Dialogue: 1,0:01:15.50,0:01:19.70,TITLE,,0,0,0,,{\fad(600,400)\pos(640,100.80000000000001)}墨灵记\N{\fs30\fsp2}被记住的，就不会消失。
