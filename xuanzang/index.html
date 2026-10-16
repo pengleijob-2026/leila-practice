@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>玄奘 · 万里求法</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { position: absolute; inset: 0; margin: auto; width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; display: block; }
+  #hint { position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%); color: #fff8; font: 14px sans-serif; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div id="hint">点击画面：从头播放（带音乐）</div>
+<audio id="bgm" src="music.mp3" preload="auto"></audio>
+<script src="video.js"></script>
+<script>
+  if (window.__RENDER__) document.getElementById('hint').remove();
+  else {
+    const audio = document.getElementById('bgm');
+    let t0 = performance.now();
+    document.body.addEventListener('click', () => {
+      document.getElementById('hint').style.display = 'none';
+      audio.currentTime = 0; audio.play().catch(() => {});
+      t0 = performance.now();
+    });
+    (function loop() {
+      renderFrame(((performance.now() - t0) / 1000) % DURATION);
+      requestAnimationFrame(loop);
+    })();
+  }
+</script>
+</body>
+</html>
