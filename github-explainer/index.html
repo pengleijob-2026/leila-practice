@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>《GitHub》—— 一个关于协作的地方</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  body.play { display: flex; align-items: center; justify-content: center; }
+  canvas { display: block; }
+  body.play canvas { width: 100vw; height: 56.25vw; max-height: 100vh; max-width: 177.78vh; }
+  #start { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    color: #e9e2cf; font: 28px "Noto Serif CJK SC", serif; letter-spacing: 4px; cursor: pointer;
+    background: rgba(0,0,0,.55); }
+  body.render #start { display: none; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1920" height="1080"></canvas>
+<div id="start">▶ 点击播放</div>
+<audio id="music" src="soundtrack.m4a" preload="auto"></audio>
+<script>
+const W = 1920, H = 1080, DURATION = 194;
+const SERIF = '"Noto Serif CJK SC", "Noto Serif", serif';
+const SERIF_EN = '"Noto Serif", "Noto Serif CJK SC", serif';
+const MONO = '"DejaVu Sans Mono", "Noto Sans CJK SC", monospace';
+
+const cv = document.getElementById('c');
+const ctx = cv.getContext('2d');
+
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rnd = mulberry32(20080410);
+const RN = []; for (let i = 0; i < 20000; i++) RN.push(rnd());
+const R = i => RN[((Math.floor(i) % 20000) + 20000) % 20000];
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, u) => a + (b - a) * u;
+const eio = u => u < .5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+const eo = u => 1 - Math.pow(1 - u, 3);
+const win = (t, a, b, f = 0.6) => Math.min(seg(t, a, a + f), 1 - seg(t, b - f, b));
+
+const COL = {
+  blue: [110, 135, 255], gold: [255, 190, 110], white: [255, 250, 240], cyan: [150, 215, 255],
+  purple: [165, 120, 255], red: [255, 95, 80], green: [130, 240, 170],
+};
+const rgba = (c, a) => `rgba(${COL[c].join(',')},${a})`;
+const SPR = {};
+for (const k in COL) {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d'); const [r, gg, b] = COL[k];
+  const gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,255,255,1)');
+  gr.addColorStop(0.12, `rgba(${r},${gg},${b},0.9)`);
+  gr.addColorStop(0.4, `rgba(${r},${gg},${b},0.22)`);
+  gr.addColorStop(1, `rgba(${r},${gg},${b},0)`);
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); SPR[k] = c;
+}
+
+function dot(x, y, r, col, a) {
+  if (a <= 0.003) return;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.globalAlpha = Math.min(1, a);
+  ctx.drawImage(SPR[col], x - r, y - r, 2 * r, 2 * r);
+}
+function orb(x, y, r, col, a) { dot(x, y, r * 7, col, a * 0.45); dot(x, y, r * 2.6, col, a); dot(x, y, r * 1.1, 'white', a); }
+function ring(x, y, r, col, a, lw = 1.5) {
+  if (a <= 0) return;
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = clamp(a);
+  ctx.strokeStyle = rgba(col, 1); ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.arc(x, y, Math.max(0, r), 0, 6.2832); ctx.stroke();
+}
+function cnode(x, y, col, at, lt, A, r = 7) {
+  const ap = seg(lt, at, at + 0.35); if (ap <= 0) return;
+  const fl = 1 - seg(lt, at, at + 1.2);
+  dot(x, y, 30 + fl * 90, col, A * fl * 0.5);
+  if (fl > 0) ring(x, y, 12 + (1 - fl) * 55, col, A * fl * 0.6);
+  orb(x, y, r, col, A * ap);
+}
+
+const bez = (p0, p1, p2, p3) => u => { const v = 1 - u; return [v * v * v * p0[0] + 3 * v * v * u * p1[0] + 3 * v * u * u * p2[0] + u * u * u * p3[0], v * v * v * p0[1] + 3 * v * v * u * p1[1] + 3 * v * u * u * p2[1] + u * u * u * p3[1]]; };
+const line = (a, b) => u => [lerp(a[0], b[0], u), lerp(a[1], b[1], u)];
+
+// A "dust" stroke: a faint core line plus scattered glowing grains, like the particle threads in the reference.
+function dust(fn, from, to, col, t, o = {}) {
+  const n = o.n || 260, w = o.w ?? 5, seed = o.seed || 0, a = o.a ?? 1, size = o.size || 1;
+  if (to <= from || a <= 0) return;
+  ctx.globalCompositeOperation = 'lighter'; ctx.globalAlpha = 1;
+  ctx.strokeStyle = rgba(col, 0.32 * a); ctx.lineWidth = o.lw || 1.3;
+  ctx.beginPath();
+  const steps = 48;
+  for (let k = 0; k <= steps; k++) { const p = fn(lerp(from, to, k / steps)); k ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]); }
+  ctx.stroke();
+  for (let i = 0; i < n; i++) {
+    const u = i / n; if (u < from || u > to) continue;
+    const p = fn(u), q = fn(Math.min(1, u + 0.003));
+    const dx = q[0] - p[0], dy = q[1] - p[1]; const L = Math.hypot(dx, dy) || 1;
+    const nx = -dy / L, ny = dx / L;
+    const j = (R(seed + i * 3) - 0.5) * 2;
+    const off = j * Math.abs(j) * w + Math.sin(t * 1.5 + i) * 0.8;
+    const tw = 0.55 + 0.45 * Math.sin(t * 3 + i * 1.7);
+    dot(p[0] + nx * off, p[1] + ny * off, (2 + R(seed + i * 3 + 1) * 4) * size, col, a * tw * (0.35 + 0.65 * R(seed + i * 3 + 2)));
+  }
+  if (o.head && to < 1) { const p = fn(to); dot(p[0], p[1], 22, col, a * 0.9); }
+}
+function flow(fn, col, t, a, n = 12, speed = 0.35, seed = 0, r = 10) {
+  if (a <= 0) return;
+  for (let k = 0; k < n; k++) { const u = (t * speed + k / n + R(seed + k) * 0.05) % 1; const p = fn(u); dot(p[0], p[1], r, col, a * Math.sin(u * Math.PI)); }
+}
+
+function txt(s, x, y, o = {}) {
+  const { size = 24, col = '#e9e4d8', a = 1, align = 'center', font = SERIF, weight = '', italic = false, base = 'middle', shadow = 0 } = o;
+  if (a <= 0.003) return;
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = clamp(a);
+  ctx.fillStyle = col; ctx.font = `${italic ? 'italic ' : ''}${weight} ${size}px ${font}`;
+  ctx.textAlign = align; ctx.textBaseline = base;
+  if (shadow) { ctx.shadowColor = 'rgba(0,0,0,0.9)'; ctx.shadowBlur = shadow; }
+  ctx.fillText(s, x, y);
+  ctx.shadowBlur = 0;
+}
+function panel(x, y, w, h, a, o = {}) {
+  if (a <= 0) return;
+  const { border = 'rgba(170,185,255,0.45)', fill = 'rgba(10,12,28,0.82)', r = 10, lw = 1.3 } = o;
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = clamp(a);
+  ctx.fillStyle = fill; ctx.strokeStyle = border; ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.roundRect(x, y, w, h, r); ctx.fill(); ctx.stroke();
+}
+function strokeLine(x1, y1, x2, y2, a, col = 'rgba(216,208,189,1)', lw = 1) {
+  if (a <= 0) return;
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = clamp(a);
+  ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+}
+
+/* ---------------- background ---------------- */
+const STARS = [];
+for (let i = 0; i < 1100; i++) {
+  const c = R(i * 7 + 3);
+  STARS.push({ x: R(i * 7) * W, y: R(i * 7 + 1) * H, z: 0.2 + R(i * 7 + 2) * 0.8, c: c < 0.55 ? 'blue' : (c < 0.8 ? 'purple' : 'gold'), p: R(i * 7 + 4) * 6.28, s: 0.5 + R(i * 7 + 5) * 2 });
+}
+function background(t) {
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  const g = ctx.createRadialGradient(W / 2, H * 0.45, 100, W / 2, H / 2, W * 0.7);
+  g.addColorStop(0, '#0b0d1c'); g.addColorStop(1, '#020207');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  for (const s of STARS) {
+    const x = ((s.x - t * 6 * s.z) % W + W) % W;
+    const y = s.y + Math.sin(t * 0.1 + s.p) * 6 * s.z;
+    const tw = 0.5 + 0.5 * Math.sin(t * s.s + s.p);
+    dot(x, y, 1.5 + s.z * 3.5, s.c, (0.1 + 0.38 * tw) * s.z);
+  }
+}
+function vignette() {
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  const g = ctx.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, W * 0.62);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.6)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+
+/* ---------------- subtitles & labels ---------------- */
+function subtitle(zh, en, lt, dur) {
+  const out = 1 - seg(lt, dur - 0.5, dur);
+  if (out <= 0 || lt < 0) return;
+  const chars = []; let hl = false;
+  for (const ch of zh) { if (ch === '【') { hl = true; continue; } if (ch === '】') { hl = false; continue; } chars.push({ ch, hl }); }
+  ctx.font = `40px ${SERIF}`;
+  const sp = 3; let total = 0;
+  const ws = chars.map(c => { const w = ctx.measureText(c.ch).width; total += w + sp; return w; });
+  total -= sp;
+  let x = W / 2 - total / 2; const y = 885;
+  chars.forEach((c, i) => {
+    const a = eo(seg(lt, 0.1 + i * 0.035, 0.1 + i * 0.035 + 0.5)) * out;
+    txt(c.ch, x + ws[i] / 2, y + (1 - a) * 6, { size: 40, col: c.hl ? '#f2b56b' : '#ece6da', a, weight: c.hl ? '600' : '', shadow: 10 });
+    x += ws[i] + sp;
+  });
+  const da = seg(lt, 0.3, 1) * out;
+  strokeLine(W / 2 - 46, y + 40, W / 2 + 46, y + 40, da * 0.45);
+  dot(W / 2, y + 40, 8, 'gold', da * 0.7);
+  txt(en, W / 2, y + 72, { size: 22, col: '#bab6c6', a: seg(lt, 0.6, 1.4) * out * 0.85, italic: true, font: SERIF_EN, shadow: 8 });
+}
+function label(year, cap, a) {
+  if (!year || a <= 0) return;
+  strokeLine(36, 80, 78, 80, a * 0.7);
+  txt(year, 94, 80, { size: 28, weight: '700', align: 'left', a, col: '#ece4d0' });
+  txt(cap, 94, 116, { size: 17, align: 'left', a: a * 0.72, col: '#b8b2a4' });
+}
+
+/* ---------------- particle text ---------------- */
+function makeTextPts(str, size, cx, cy, step) {
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.font = `600 ${size}px ${SERIF_EN}`; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(str, cx, cy);
+  const d = g.getImageData(0, 0, W, H).data; const pts = [];
+  for (let y = 0; y < H; y += step) for (let x = 0; x < W; x += step) {
+    if (d[(y * W + x) * 4 + 3] > 128) pts.push([x + (R(x * 7 + y) - 0.5) * step, y + (R(x + y * 13) - 0.5) * step]);
+  }
+  return pts;
+}
+const TP = {};
+function particleTitle(pts, lt, A, t, t0, t1, seedBase) {
+  for (let i = 0; i < pts.length; i++) {
+    const d = R(seedBase + i * 5);
+    const arr = eio(seg(lt, t0 + d * (t1 - t0) * 0.6, t0 + (t1 - t0) * 0.5 + d * (t1 - t0) * 0.5));
+    const sx = R(seedBase + i * 5 + 1) * W, sy = R(seedBase + i * 5 + 2) * H;
+    const ang = t * 0.25 + R(seedBase + i * 5 + 3) * 6.28, sw = (1 - arr) * 50;
+    const x = lerp(sx, pts[i][0], arr) + Math.cos(ang) * sw, y = lerp(sy, pts[i][1], arr) + Math.sin(ang) * sw;
+    const tw = 0.6 + 0.4 * Math.sin(t * 2.5 + i);
+    const col = arr > 0.9 ? (R(i * 3) < 0.7 ? 'gold' : 'white') : (R(i * 3) < 0.6 ? 'blue' : 'purple');
+    dot(x, y, arr > 0.98 ? 3.4 : 2.5 + R(i) * 2, col, A * tw * (0.3 + 0.55 * arr));
+  }
+}
+
+/* ---------------- scene 1: opening ---------------- */
+function s1(lt, A, t) {
+  particleTitle(TP.title, lt, A, t, 2.4, 7.2, 100);
+  const f = seg(lt, 6, 8);
+  dot(960, 450, 520, 'gold', A * f * 0.1);
+  txt('代码 · 协作 · 开源', 960, 640, { size: 28, col: '#d9d1bf', a: A * seg(lt, 7.5, 9) });
+  txt('CODE  ·  COLLABORATION  ·  OPEN SOURCE', 960, 686, { size: 16, col: '#9d98a8', a: A * seg(lt, 8, 9.5), font: SERIF_EN });
+}
+
+/* ---------------- scene 2: life before version control ---------------- */
+const FILES = ['report.doc', 'report_final.doc', 'report_final2.doc', 'report_最终版.doc', 'report_真的最终版.doc'];
+function fileCard(x, y, name, a, o = {}) {
+  if (a <= 0) return;
+  const { w = 200, h = 240, red = 0 } = o;
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = clamp(a);
+  const x0 = x - w / 2, y0 = y - h / 2, f = 34;
+  ctx.fillStyle = 'rgba(14,16,34,0.88)';
+  ctx.strokeStyle = red > 0 ? `rgba(255,${Math.round(150 - red * 60)},${Math.round(130 - red * 60)},${0.6 + red * 0.4})` : 'rgba(170,185,255,0.6)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + w - f, y0); ctx.lineTo(x0 + w, y0 + f); ctx.lineTo(x0 + w, y0 + h); ctx.lineTo(x0, y0 + h); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x0 + w - f, y0); ctx.lineTo(x0 + w - f, y0 + f); ctx.lineTo(x0 + w, y0 + f); ctx.stroke();
+  ctx.fillStyle = 'rgba(170,185,255,0.25)';
+  for (let k = 0; k < 6; k++) ctx.fillRect(x0 + 22, y0 + 58 + k * 22, (w - 44) * (k % 3 === 2 ? 0.6 : 1), 3);
+  txt(name, x, y0 + h - 28, { size: 14, font: MONO, col: '#e6e2f0', a });
+  dot(x, y, w * 1.1, red > 0 ? 'red' : 'blue', a * 0.1 * (1 + red));
+}
+function s2(lt, A, t) {
+  const B = seg(lt, 6.2, 7.5), C = seg(lt, 11.6, 12.6);
+  if (C < 1) {
+    for (let i = 0; i < 5; i++) {
+      const appear = i === 0 ? seg(lt, 1, 2) : eo(seg(lt, 6.5 + i * 0.9, 7.1 + i * 0.9));
+      const sx = 960 + (i - 2) * 235;
+      const x = i === 0 ? lerp(960, sx, eio(B)) : sx;
+      const y = 420 + (i === 0 ? 0 : (1 - appear) * 30);
+      fileCard(x, y, FILES[i], A * appear * (1 - C));
+    }
+  }
+  if (C > 0) {
+    const cx = 960, cy = 420, conf = seg(lt, 14, 15);
+    for (let k = 0; k < 10; k++) {
+      const ang = k / 10 * 6.283 - 1.57 + 0.31;
+      const px = cx + Math.cos(ang) * 560, py = cy + Math.sin(ang) * 300;
+      const ap = eo(seg(lt, 12 + k * 0.15, 13 + k * 0.15));
+      orb(px, py, 6, 'blue', A * ap);
+      const fn = line([px, py], [cx, cy]);
+      dust(fn, 0, eo(seg(lt, 12.5 + k * 0.15, 14 + k * 0.15)) * 0.8, 'blue', t, { n: 90, w: 4, seed: k * 500, a: A * 0.7 });
+      flow(u => fn(u * 0.8), 'cyan', t, A * 0.8 * conf, 4, 0.6, k * 30);
+    }
+    const fl = conf * (0.5 + 0.5 * Math.sin(t * 14));
+    fileCard(cx, cy, 'main.js', A * C, { red: fl });
+    for (let s = 0; s < 30; s++) {
+      const ph = (t * 1.3 + R(s * 9)) % 1, ang = R(s * 9 + 1) * 6.28, rr = 60 + ph * 170;
+      dot(cx + Math.cos(ang) * rr, cy + Math.sin(ang) * rr * 0.8, 5, 'red', A * conf * (1 - ph) * 0.9);
+    }
+    txt('冲突  CONFLICT', cx, cy - 165, { size: 22, col: '#ff8a70', a: A * conf * (0.6 + 0.4 * Math.sin(t * 10)), weight: '600' });
+  }
+}
+
+/* ---------------- scene 3: Git & commits ---------------- */
+const HASH = ['a1f3c9', '7e2d41', '3b9c0e', 'f0a8d2', 'c45e17', '9d2b6a', 'e81f03'];
+const MSG = ['初始化项目', '登录页面', '修复 bug', '添加搜索', '调整样式', '性能优化', '发布 v1.0'];
+function s3(lt, A, t) {
+  const y = 520, X = i => 270 + i * 230;
+  dust(line([150, y], [1770, y]), 0, eo(seg(lt, 0.3, 3)), 'blue', t, { n: 420, w: 4, seed: 1, a: A * 0.8 });
+  const back = eio(seg(lt, 17.8, 20.2));
+  const headIdx = lt < 17.6 ? 6 : lerp(6, 2, back);
+  for (let i = 0; i < 7; i++) {
+    const at = 1.2 + i * 1.4;
+    const ap = seg(lt, at, at + 0.4); if (ap <= 0) continue;
+    const dim = i > headIdx + 0.01 ? 0.25 : 1;
+    cnode(X(i), y, 'gold', at, lt, A * dim);
+    txt(MSG[i], X(i), y - 50, { size: 21, a: A * ap * dim });
+    txt(HASH[i], X(i), y + 44, { size: 15, font: MONO, col: '#9a96aa', a: A * ap * dim });
+  }
+  const ca = A * win(lt, 12.6, 17.4, 0.5);
+  if (ca > 0) {
+    const cx = X(3), w = 400, h = 168, x0 = cx - w / 2, y0 = 172;
+    strokeLine(cx, y0 + h, cx, y - 78, ca * 0.6, 'rgba(255,190,110,1)');
+    panel(x0, y0, w, h, ca, { border: 'rgba(255,190,110,0.6)' });
+    txt('commit f0a8d2', x0 + 24, y0 + 32, { size: 19, font: MONO, col: '#f2b56b', a: ca, align: 'left' });
+    txt('作者    小明', x0 + 24, y0 + 70, { size: 19, a: ca, align: 'left', col: '#ddd8ea' });
+    txt('时间    周二 14:32', x0 + 24, y0 + 102, { size: 19, a: ca, align: 'left', col: '#ddd8ea' });
+    txt('修改    search.js', x0 + 24, y0 + 134, { size: 19, a: ca, align: 'left', col: '#ddd8ea' });
+    txt('+42', x0 + 270, y0 + 134, { size: 19, font: MONO, a: ca, align: 'left', col: '#8fe8b0' });
+    txt('−7', x0 + 330, y0 + 134, { size: 19, font: MONO, a: ca, align: 'left', col: '#ff8a78' });
+  }
+  const ha = A * seg(lt, 17.6, 18.2);
+  if (ha > 0) {
+    const hx = lerp(X(6), X(2), back);
+    ring(hx, y, 20, 'white', ha, 2);
+    dot(hx, y, 44, 'white', ha * 0.35);
+    txt('HEAD', hx, y + 84, { size: 17, font: MONO, col: '#ffffff', a: ha, weight: '700' });
+    strokeLine(hx, y + 24, hx, y + 68, ha * 0.5, 'rgba(255,255,255,1)');
+    const rw = win(lt, 17.8, 20.4, 0.3);
+    for (let k = 0; k < 16; k++) {
+      const u = (t * 0.9 + k / 16) % 1, sx = lerp(X(6) + 40, hx, u);
+      dot(sx, y + (R(k + 40) - 0.5) * 16, 7, 'cyan', A * rw * Math.sin(u * Math.PI));
+    }
+  }
+}
+
+/* ---------------- scene 4: branch & merge ---------------- */
+function s4(lt, A, t) {
+  const y = 590, yb = 370;
+  dust(line([150, y], [1770, y]), 0, eo(seg(lt, 0, 1.5)), 'blue', t, { n: 420, w: 4, seed: 2, a: A * 0.8 });
+  const b1 = bez([520, y], [650, y], [620, yb], [760, yb]);
+  const b2 = line([760, yb], [1250, yb]);
+  const b3 = bez([1250, yb], [1390, yb], [1360, y], [1500, y]);
+  dust(b1, 0, eo(seg(lt, 1.5, 3.2)), 'gold', t, { n: 120, w: 4, seed: 3, a: A, head: true });
+  dust(b2, 0, seg(lt, 3.2, 8.8), 'gold', t, { n: 200, w: 4, seed: 4, a: A, head: true });
+  dust(b3, 0, eo(seg(lt, 11, 12.6)), 'gold', t, { n: 120, w: 4, seed: 5, a: A, head: true });
+  if (lt > 12.6) flow(b3, 'gold', t, A * win(lt, 12.6, 16, 0.5), 5, 0.6, 77);
+  [[270, 0.5], [520, 0.8], [760, 1.1], [1050, 7], [1700, 14]].forEach(([x, at]) => cnode(x, y, 'blue', at, lt, A));
+  [[920, 3.8], [1090, 6.2], [1250, 8.8]].forEach(([x, at]) => cnode(x, yb, 'gold', at, lt, A));
+  cnode(1500, y, 'white', 12.6, lt, A, 9);
+  if (lt > 12.6) { const fl = 1 - seg(lt, 12.6, 14.5); dot(1500, y, 260, 'gold', A * fl * 0.5); }
+  txt('main  主线', 160, y + 52, { align: 'left', size: 21, col: '#aab4ff', a: A * seg(lt, 0.5, 1.5) });
+  txt('feature  新想法', 780, yb - 52, { align: 'left', size: 21, col: '#f2c080', a: A * seg(lt, 2.8, 3.8) });
+  txt('merge  合并', 1500, y + 58, { size: 21, col: '#ffffff', a: A * seg(lt, 12.6, 13.4) });
+  txt('branch', 590, 470, { size: 17, font: MONO, col: '#f2c080', a: A * win(lt, 2, 9, 0.6) * 0.8 });
+}
+
+/* ---------------- scene 5: GitHub = Git in the cloud ---------------- */
+const DEVS = [[1830, 160], [1880, 430], [1800, 690], [1540, 770], [1000, 770], [700, 170], [980, 120], [1360, 110], [1640, 90], [170, 240], [470, 330], [760, 470]];
+function laptop(cx, cy, s, a, t) {
+  if (a <= 0) return;
+  const w = 420 * s, h = 260 * s;
+  panel(cx - w / 2, cy - h / 2, w, h, a, { r: 12 * s });
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = clamp(a);
+  ctx.strokeStyle = 'rgba(170,185,255,0.45)'; ctx.fillStyle = 'rgba(10,12,28,0.9)'; ctx.lineWidth = 1.3;
+  ctx.beginPath();
+  ctx.moveTo(cx - w / 2 - 34 * s, cy + h / 2 + 24 * s); ctx.lineTo(cx + w / 2 + 34 * s, cy + h / 2 + 24 * s);
+  ctx.lineTo(cx + w / 2, cy + h / 2 + 4 * s); ctx.lineTo(cx - w / 2, cy + h / 2 + 4 * s); ctx.closePath(); ctx.fill(); ctx.stroke();
+  const ly = cy + 20 * s;
+  dust(line([cx - 150 * s, ly], [cx + 150 * s, ly]), 0, 1, 'gold', t, { n: 70, w: 2, seed: 9, a: a * 0.8, size: s });
+  for (let k = 0; k < 4; k++) orb(cx - 120 * s + k * 80 * s, ly, 5 * s, 'gold', a);
+  txt('你的电脑 · Local', cx, cy - 70 * s, { size: 24 * s, a, col: '#cfd2e6' });
+}
+function s5(lt, A, t) {
+  const B = eio(seg(lt, 6.5, 8.5));
+  const D = seg(lt, 18.3, 19.3), dimF = 1 - 0.85 * D;
+  const lx = lerp(960, 400, B), ly = lerp(440, 640, B), ls = lerp(1, 0.6, B);
+  const O = [1250, 400];
+  const oa = A * eo(seg(lt, 7, 9)) * dimF;
+  if (lt > 12) {
+    DEVS.forEach((d, k) => {
+      const c1 = [d[0] + (O[0] - d[0]) * 0.45, d[1]], c2 = [O[0] - (O[0] - d[0]) * 0.28, O[1]];
+      const fn = bez(d, c1, c2, O);
+      const st = 12.4 + k * 0.28;
+      orb(d[0], d[1], 6, 'blue', A * dimF * seg(lt, st - 0.3, st + 0.3));
+      dust(fn, 0, eo(seg(lt, st, st + 2.2)), 'blue', t, { n: 200, w: 5, seed: 1000 + k * 400, a: A * dimF * 0.85 });
+      flow(fn, 'cyan', t, A * dimF * seg(lt, st + 2, st + 3), 5, 0.28, k * 11, 9);
+    });
+  }
+  const beam = bez([lx, ly - 140 * ls], [lx, ly - 330], [O[0] - 420, O[1]], O);
+  dust(beam, 0, eo(seg(lt, 8, 10.5)), 'gold', t, { n: 200, w: 5, seed: 31, a: A * dimF, head: true });
+  flow(beam, 'gold', t, A * dimF * seg(lt, 10.5, 11.5), 7, 0.4, 5, 11);
+  laptop(lx, ly, ls, A * dimF * seg(lt, 0.4, 1.4), t);
+  if (oa > 0) {
+    const g = eo(seg(lt, 7, 9.5));
+    dot(O[0], O[1], 260 * g, 'blue', oa * 0.35);
+    dot(O[0], O[1], 90, 'cyan', oa * 0.7);
+    orb(O[0], O[1], 12, 'white', oa);
+    for (let k = 0; k < 70; k++) {
+      const ang = k / 70 * 6.283 + t * 0.25, rr = 92 + Math.sin(k * 3.1 + t) * 6;
+      dot(O[0] + Math.cos(ang) * rr, O[1] + Math.sin(ang) * rr * 0.4, 4, 'cyan', oa * 0.6);
+    }
+    txt('GitHub', O[0], O[1] + 120, { size: 34, font: SERIF_EN, weight: '600', a: oa * (1 - D), col: '#eef0ff' });
+    txt('云端仓库 · Remote', O[0], O[1] + 160, { size: 18, a: oa * 0.75 * (1 - D), col: '#aab0cc' });
+  }
+  if (D > 0) {
+    const a2 = A * seg(lt, 18.8, 19.8);
+    strokeLine(960, 330, 960, 590, A * D * 0.4);
+    txt('Git', 620, 420, { size: 100, font: SERIF_EN, weight: '600', a: A * D, col: '#f2c080' });
+    txt('工具 —— 在你的电脑上记录历史', 620, 520, { size: 28, a: a2 });
+    txt('GitHub', 1300, 420, { size: 100, font: SERIF_EN, weight: '600', a: A * D, col: '#aab8ff' });
+    txt('平台 —— 在云端托管与协作', 1300, 520, { size: 28, a: a2 });
+  }
+}
+
+/* ---------------- scene 6: what people do on GitHub ---------------- */
+const FEAT = [['代码托管', 'Repositories', 1.2, 'gold'], ['个人主页', 'Pages · Profile', 2.4, 'gold'], ['问题追踪', 'Issues', 6.8, 'green'], ['代码审查', 'Pull Requests', 8.0, 'green'], ['自动化', 'Actions', 12.2, 'purple'], ['开源协作', 'Open Source', 17.0, 'cyan']];
+function s6(lt, A, t) {
+  const C = [960, 430];
+  dot(C[0], C[1], 200, 'blue', A * 0.35);
+  orb(C[0], C[1], 11, 'cyan', A);
+  txt('GitHub', C[0], C[1] + 58, { size: 26, font: SERIF_EN, weight: '600', a: A * 0.9 });
+  FEAT.forEach(([zh, en, at, col], k) => {
+    const ang = -Math.PI / 2 + k * Math.PI / 3 + lt * 0.03;
+    const px = C[0] + Math.cos(ang) * 580, py = C[1] + Math.sin(ang) * 265;
+    const ap = eo(seg(lt, at, at + 0.9)); if (ap <= 0) return;
+    const hi = 0.5 + 0.5 * win(lt, at, at + 5.2, 0.5);
+    const fn = line(C, [px, py]);
+    dust(fn, 0.1, lerp(0.1, 0.9, ap), col, t, { n: 140, w: 4, seed: 2000 + k * 300, a: A * hi * 0.8 });
+    if (ap >= 1) flow(u => fn(lerp(0.1, 0.9, u)), col, t, A * hi * 0.8, 4, 0.4, k * 13, 8);
+    orb(px, py, 8, col, A * ap * hi);
+    const below = py > C[1] + 10;
+    txt(zh, px, py + (below ? 44 : -66), { size: 27, a: A * ap * (0.55 + 0.45 * hi) });
+    txt(en, px, py + (below ? 78 : -34), { size: 17, font: SERIF_EN, italic: true, col: '#aaa6bb', a: A * ap * (0.55 + 0.45 * hi) });
+  });
+  const pa = A * seg(lt, 17.4, 18.4);
+  [['microsoft/vscode', 200], ['facebook/react', 340], ['python/cpython', 90]].forEach(([n, deg], k) => {
+    const a = deg * Math.PI / 180;
+    txt(n, C[0] + Math.cos(a) * 270, C[1] + Math.sin(a) * 125, { size: 17, font: MONO, col: '#f2c080', a: pa * seg(lt, 17.4 + k * 0.3, 18.2 + k * 0.3) });
+  });
+}
+
+/* ---------------- scene 7: how to use it ---------------- */
+const STEPS = ['新建仓库', 'clone', 'commit', 'push', 'Pull Request', 'merge'];
+const TERM = [
+  [1.5, '# 浏览器打开 github.com → New repository', 'c'],
+  [3.2, '已创建仓库 you/my-project  [OK]', 'g'],
+  [6.8, '$ git clone https://github.com/you/my-project.git', 'cmd'],
+  [9.3, "Cloning into 'my-project'... done.", 'c'],
+  [12.8, '$ git add .', 'cmd'],
+  [14.2, '$ git commit -m "添加首页"', 'cmd'],
+  [16.4, '[main 4c1e2a] 添加首页', 'c'],
+  [18.8, '$ git push', 'cmd'],
+  [20.6, 'To github.com/you/my-project.git   main -> main', 'c'],
+  [24.8, '# 网页上点击 Compare & pull request', 'c'],
+  [27.0, 'Pull Request #1 已创建，等待审查  [OK]', 'g'],
+  [30.8, '# 队友 Approve → Merge pull request', 'c'],
+  [33.2, '$ git pull', 'cmd'],
+  [34.8, 'Updating 4c1e2a..9b07d3  Fast-forward', 'c'],
+];
+const TCOL = { c: '#8f8aa3', g: '#8fe0ae', cmd: '#ebe7f4' };
+function folder(x, y, s, a, name, col = 'rgba(170,185,255,0.7)') {
+  if (a <= 0) return;
+  ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = clamp(a);
+  ctx.strokeStyle = col; ctx.fillStyle = 'rgba(30,36,70,0.7)'; ctx.lineWidth = 1.5;
+  const w = 90 * s, h = 64 * s, x0 = x - w / 2, y0 = y - h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0 + 10 * s); ctx.lineTo(x0, y0 + h); ctx.lineTo(x0 + w, y0 + h); ctx.lineTo(x0 + w, y0 + 10 * s);
+  ctx.lineTo(x0 + w * 0.45, y0 + 10 * s); ctx.lineTo(x0 + w * 0.36, y0 - 2 * s); ctx.lineTo(x0, y0 - 2 * s); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  if (name) txt(name, x, y + h / 2 + 24 * s, { size: 16 * s, font: MONO, col: '#cfd3ea', a });
+}
+function s7(lt, A, t) {
+  const step = lt < 6.25 ? 0 : lt < 12.25 ? 1 : lt < 18.25 ? 2 : lt < 24.25 ? 3 : lt < 30.25 ? 4 : 5;
+  // step indicator
+  const ia = A * seg(lt, 0.3, 1.2);
+  strokeLine(960 - 2.5 * 175, 132, 960 + 2.5 * 175, 132, ia * 0.25);
+  STEPS.forEach((s, k) => {
+    const x = 960 + (k - 2.5) * 175, on = k === step, done = k < step;
+    orb(x, 132, on ? 6 : 3.5, on ? 'gold' : done ? 'blue' : 'white', ia * (on ? 1 : done ? 0.7 : 0.3));
+    txt(`${k + 1}. ${s}`, x, 160, { size: 16, a: ia * (on ? 1 : 0.45), col: on ? '#f2c080' : '#cfcadb', font: k === 0 ? SERIF : SERIF_EN });
+  });
+  // panels
+  const pa = A * seg(lt, 0.2, 1.2);
+  panel(180, 200, 580, 380, pa);
+  panel(1160, 200, 580, 380, pa, { border: 'rgba(150,215,255,0.5)' });
+  txt('你的电脑 · Local', 210, 232, { size: 20, align: 'left', a: pa, col: '#cfd2e6' });
+  txt('GitHub · github.com/you/my-project', 1190, 232, { size: 18, align: 'left', a: pa, col: '#bfe4ff', font: SERIF_EN });
+  strokeLine(180, 256, 760, 256, pa * 0.25); strokeLine(1160, 256, 1740, 256, pa * 0.25);
+  // remote
+  const rf = eo(seg(lt, 1.5, 2.5));
+  if (rf > 0) { dot(1270, 335, 120, 'cyan', A * (1 - seg(lt, 1.5, 3.5)) * 0.6); }
+  folder(1270, 335, 1, A * rf, 'my-project', 'rgba(150,215,255,0.8)');
+  const RY = 500;
+  dust(line([1200, RY], [1700, RY]), 0, eo(seg(lt, 2.2, 3.4)), 'cyan', t, { n: 120, w: 3, seed: 60, a: A * 0.7 });
+  cnode(1250, RY, 'cyan', 2.6, lt, A);
+  cnode(1420, RY, 'gold', 21, lt, A);
+  cnode(1600, RY, 'purple', 31.4, lt, A, 8);
+  txt('init', 1250, RY + 34, { size: 14, font: MONO, col: '#8f8aa3', a: A * seg(lt, 2.6, 3) });
+  txt('4c1e2a', 1420, RY + 34, { size: 14, font: MONO, col: '#8f8aa3', a: A * seg(lt, 21, 21.4) });
+  txt('merge', 1600, RY + 34, { size: 14, font: MONO, col: '#c6b0ff', a: A * seg(lt, 31.4, 31.8) });
+  // pull request card
+  const pr = A * eo(seg(lt, 25.5, 26.5));
+  if (pr > 0) {
+    const merged = seg(lt, 31, 31.6);
+    const x0 = 1380, y0 = 280;
+    panel(x0, y0, 330, 160, pr, { border: merged > 0 ? `rgba(165,120,255,${0.5 + merged * 0.5})` : 'rgba(255,190,110,0.6)', fill: 'rgba(16,18,40,0.95)' });
+    txt('Pull Request #1', x0 + 20, y0 + 30, { size: 19, font: SERIF_EN, weight: '600', col: '#f2c080', a: pr, align: 'left' });
+    txt('添加首页   feature → main', x0 + 20, y0 + 64, { size: 16, col: '#cfd2e6', a: pr, align: 'left' });
+    const ca = A * seg(lt, 27.8, 28.6);
+    panel(x0 + 20, y0 + 86, 290, 34, ca, { fill: 'rgba(40,46,80,0.8)', border: 'rgba(170,185,255,0.3)', r: 8 });
+    txt('队友：看起来不错！', x0 + 34, y0 + 103, { size: 15, col: '#e6e2f0', a: ca, align: 'left' });
+    const ap = A * seg(lt, 29, 29.6) * (1 - merged);
+    txt('✓ Approved', x0 + 20, y0 + 140, { size: 16, font: SERIF_EN, col: '#8fe0ae', a: ap, align: 'left', weight: '600' });
+    txt('Merged', x0 + 20, y0 + 140, { size: 16, font: SERIF_EN, col: '#c6b0ff', a: A * merged, align: 'left', weight: '700' });
+    if (merged > 0) dot(x0 + 165, y0 + 80, 220, 'purple', A * (1 - seg(lt, 31, 33)) * 0.6);
+  }
+  // local
+  const lf = eo(seg(lt, 9.4, 10.2));
+  folder(290, 335, 1, A * lf, 'my-project');
+  const LY = 500;
+  dust(line([220, LY], [720, LY]), 0, eo(seg(lt, 9.6, 10.6)), 'blue', t, { n: 120, w: 3, seed: 70, a: A * 0.7 });
+  cnode(270, LY, 'cyan', 9.8, lt, A);
+  cnode(440, LY, 'gold', 16.4, lt, A);
+  cnode(620, LY, 'purple', 34.8, lt, A, 8);
+  txt('init', 270, LY + 34, { size: 14, font: MONO, col: '#8f8aa3', a: A * seg(lt, 9.8, 10.2) });
+  txt('4c1e2a', 440, LY + 34, { size: 14, font: MONO, col: '#8f8aa3', a: A * seg(lt, 16.4, 16.8) });
+  txt('merge', 620, LY + 34, { size: 14, font: MONO, col: '#c6b0ff', a: A * seg(lt, 34.8, 35.2) });
+  // local editor
+  const ea = A * seg(lt, 10, 10.8);
+  if (ea > 0) {
+    panel(390, 280, 340, 140, ea, { fill: 'rgba(6,8,20,0.9)', border: 'rgba(170,185,255,0.3)', r: 6 });
+    txt('index.html', 404, 298, { size: 13, font: MONO, col: '#8f8aa3', a: ea, align: 'left' });
+    const code = ['<h1>我的第一个项目</h1>', '<p>Hello, GitHub!</p>', '<footer>2026</footer>'];
+    let budget = Math.max(0, Math.floor((lt - 12.6) * 22));
+    code.forEach((c, k) => {
+      const chars = [...c]; const n = Math.min(chars.length, budget); budget -= n;
+      if (n > 0) txt(chars.slice(0, n).join(''), 404, 330 + k * 28, { size: 16, font: MONO, col: k === 1 ? '#f2c080' : '#bfe4ff', a: ea, align: 'left' });
+    });
+  }
+  // transfer arcs
+  const top = bez([1170, 380], [1050, 270], [870, 270], [750, 380]);
+  const bottom = bez([750, 430], [870, 540], [1050, 540], [1170, 430]);
+  const clone = win(lt, 7.6, 10.4, 0.4), pull = win(lt, 33.4, 35.6, 0.4), push = win(lt, 19.4, 21.6, 0.4);
+  dust(top, 0, 1, 'cyan', t, { n: 80, w: 3, seed: 81, a: A * Math.max(clone, pull) * 0.6 });
+  flow(top, 'cyan', t, A * Math.max(clone, pull), 10, 0.7, 3, 11);
+  txt(pull > clone ? 'git pull' : 'git clone', 960, 268, { size: 17, font: MONO, col: '#bfe4ff', a: A * Math.max(clone, pull) });
+  dust(bottom, 0, 1, 'gold', t, { n: 80, w: 3, seed: 82, a: A * push * 0.6 });
+  flow(bottom, 'gold', t, A * push, 10, 0.7, 4, 11);
+  txt('git push', 960, 548, { size: 17, font: MONO, col: '#f2c080', a: A * push });
+  // terminal
+  const ta = A * seg(lt, 0.8, 1.6);
+  const tx = 560, ty = 612, tw = 800, th = 196;
+  panel(tx, ty, tw, th, ta, { fill: 'rgba(4,5,12,0.92)', border: 'rgba(200,200,220,0.28)', r: 8 });
+  ['#ff6b5a', '#f5c04a', '#5fd47a'].forEach((c, k) => {
+    ctx.globalAlpha = ta * 0.8; ctx.globalCompositeOperation = 'source-over'; ctx.fillStyle = c;
+    ctx.beginPath(); ctx.arc(tx + 20 + k * 20, ty + 18, 5, 0, 6.283); ctx.fill();
+  });
+  txt('terminal', tx + tw / 2, ty + 18, { size: 13, font: MONO, col: '#77738a', a: ta });
+  const shown = TERM.filter(l => lt >= l[0]).slice(-5);
+  shown.forEach((l, k) => {
+    let s = l[1];
+    if (l[2] === 'cmd') { const chars = [...s]; s = chars.slice(0, Math.min(chars.length, Math.floor((lt - l[0]) * 28) + 2)).join(''); }
+    txt(s, tx + 22, ty + 52 + k * 30, { size: 18, font: MONO, col: TCOL[l[2]], a: ta, align: 'left' });
+    if (k === shown.length - 1 && Math.sin(t * 8) > 0) {
+      ctx.font = `18px ${MONO}`; const w = ctx.measureText(s).width;
+      txt('▌', tx + 26 + w, ty + 52 + k * 30, { size: 18, font: MONO, col: '#ebe7f4', a: ta * 0.8, align: 'left' });
+    }
+  });
+}
+
+/* ---------------- scene 8: fork & pull request ---------------- */
+function s8(lt, A, t) {
+  const L = [560, 420], Rr = [1360, 420];
+  const ripple = lt - 12;
+  for (let k = 0; k < 46; k++) {
+    const ang = R(k * 3 + 700) * 6.28, rad = 170 + R(k * 3 + 701) * 250;
+    const p = [L[0] + Math.cos(ang) * rad, L[1] + Math.sin(ang) * rad * 0.72];
+    const lit = seg(lt, 12.4 + rad / 420 * 3, 13 + rad / 420 * 3);
+    dot(p[0], p[1], 9 + lit * 12, lit > 0 ? 'gold' : 'blue', A * (0.35 + 0.65 * lit));
+  }
+  if (ripple > 0) for (let k = 0; k < 3; k++) { const rr = (ripple - k * 0.7) * 260; if (rr > 0) ring(L[0], L[1], rr, 'gold', A * clamp(1 - rr / 700) * 0.5, 1.5); }
+  dot(L[0], L[1], 240, 'gold', A * 0.3);
+  orb(L[0], L[1], 14, 'gold', A);
+  if (ripple > 0) dot(L[0], L[1], 400, 'white', A * (1 - seg(lt, 12, 13.8)) * 0.6);
+  txt('原项目 · original', L[0], L[1] + 100, { size: 22, a: A, col: '#f2dcb8', shadow: 8 });
+  const fork = bez(L, [760, 130], [1160, 130], Rr);
+  dust(fork, 0, eo(seg(lt, 1.5, 4.4)), 'cyan', t, { n: 220, w: 5, seed: 90, a: A, head: true });
+  flow(fork, 'cyan', t, A * win(lt, 4.4, 9, 0.5), 8, 0.4, 9, 10);
+  txt('Fork  复制一份', 960, 172, { size: 22, col: '#bfe4ff', a: A * seg(lt, 2.5, 3.5) });
+  const ra = A * eo(seg(lt, 4, 5.2));
+  dot(Rr[0], Rr[1], 200 * eo(seg(lt, 4, 5.2)), 'blue', ra * 0.35);
+  orb(Rr[0], Rr[1], 12, 'cyan', ra);
+  txt('你的 Fork · your copy', Rr[0], Rr[1] + 100, { size: 22, a: ra, col: '#cfe6ff' });
+  const fx = [Rr[0] + 150, Rr[1] - 110];
+  dust(line(Rr, fx), 0, eo(seg(lt, 6.6, 7.2)), 'green', t, { n: 40, w: 2, seed: 95, a: A });
+  cnode(fx[0], fx[1], 'green', 7.2, lt, A);
+  txt('修复 bug', fx[0] + 24, fx[1] - 30, { size: 19, col: '#a8f0c4', a: A * seg(lt, 7.2, 7.8), align: 'left' });
+  const pr = bez(Rr, [1160, 720], [760, 720], L);
+  dust(pr, 0, eo(seg(lt, 8.6, 11.4)), 'gold', t, { n: 220, w: 5, seed: 97, a: A, head: true });
+  flow(pr, 'gold', t, A * win(lt, 11.4, 16, 0.5), 8, 0.4, 19, 10);
+  txt('Pull Request  请求合并', 960, 690, { size: 22, col: '#f2c080', a: A * seg(lt, 9.5, 10.5) });
+}
+
+/* ---------------- scene 9: recap ---------------- */
+const TERMS = [['Repository', '仓库', '项目和它的全部历史'], ['Commit', '提交', '一次修改的快照'], ['Branch', '分支', '互不打扰的平行线'], ['Pull Request', '拉取请求', '请别人审查并合并']];
+function icon(k, x, y, a, t) {
+  if (k === 0) folder(x, y, 0.9, a, null, 'rgba(255,190,110,0.8)');
+  if (k === 1) { dust(line([x - 70, y], [x + 70, y]), 0, 1, 'gold', t, { n: 50, w: 2, seed: 300, a }); orb(x, y, 8, 'gold', a); ring(x, y, 20, 'gold', a * 0.6); }
+  if (k === 2) {
+    dust(line([x - 80, y + 18], [x + 80, y + 18]), 0, 1, 'blue', t, { n: 50, w: 2, seed: 310, a });
+    dust(bez([x - 50, y + 18], [x - 20, y + 18], [x - 20, y - 18], [x + 10, y - 18]), 0, 1, 'gold', t, { n: 24, w: 2, seed: 320, a });
+    dust(line([x + 10, y - 18], [x + 70, y - 18]), 0, 1, 'gold', t, { n: 20, w: 2, seed: 330, a });
+    orb(x - 50, y + 18, 5, 'blue', a); orb(x + 40, y - 18, 5, 'gold', a);
+  }
+  if (k === 3) {
+    orb(x - 60, y, 7, 'cyan', a); orb(x + 60, y, 7, 'gold', a);
+    const fn = bez([x + 60, y], [x + 30, y - 40], [x - 30, y - 40], [x - 60, y]);
+    dust(fn, 0, 1, 'gold', t, { n: 40, w: 2, seed: 340, a });
+    flow(fn, 'gold', t, a, 4, 0.5, 7, 7);
+  }
+}
+function s9(lt, A, t) {
+  TERMS.forEach(([en, zh, desc], i) => {
+    const a = A * eo(seg(lt, 1 + i * 1.2, 1.9 + i * 1.2)); if (a <= 0) return;
+    const x0 = 180 + i * 400, y0 = 230 + (1 - a) * 20, w = 360, h = 340, cx = x0 + w / 2;
+    panel(x0, y0, w, h, a, { fill: 'rgba(12,14,32,0.8)', border: 'rgba(200,190,170,0.35)', r: 14 });
+    icon(i, cx, y0 + 90, a, t);
+    txt(en, cx, y0 + 180, { size: 34, font: SERIF_EN, weight: '600', a, col: '#eef0ff' });
+    txt(zh, cx, y0 + 228, { size: 26, a, col: '#f2b56b' });
+    strokeLine(cx - 30, y0 + 258, cx + 30, y0 + 258, a * 0.4);
+    txt(desc, cx, y0 + 292, { size: 19, a: a * 0.85, col: '#bdb8c9' });
+  });
+}
+
+/* ---------------- scene 10: finale network ---------------- */
+let NET = null;
+function buildNet() {
+  const nodes = []; let i = 0;
+  while (nodes.length < 78 && i < 4000) {
+    const p = [120 + R(5000 + i * 2) * 1680, 110 + R(5001 + i * 2) * 690]; i++;
+    if (nodes.every(q => Math.hypot(q[0] - p[0], q[1] - p[1]) > 120)) nodes.push(p);
+  }
+  const maxd = Math.hypot(960, 540);
+  const at = nodes.map(p => 0.3 + Math.hypot(p[0] - 960, p[1] - 450) / maxd * 6.5);
+  const edges = []; const seen = new Set();
+  nodes.forEach((p, a) => {
+    const near = nodes.map((q, b) => [b, Math.hypot(q[0] - p[0], q[1] - p[1])]).filter(e => e[0] !== a).sort((x, y) => x[1] - y[1]).slice(0, 3);
+    near.forEach(([b, d], k) => { if (k === 2 && R(a * 7 + b) < 0.5) return; const key = a < b ? `${a}-${b}` : `${b}-${a}`; if (!seen.has(key)) { seen.add(key); edges.push([a, b, d]); } });
+  });
+  NET = { nodes, at, edges };
+}
+function s10(lt, A, t) {
+  const D = 1 - 0.7 * seg(lt, 8.5, 10.5);
+  NET.edges.forEach(([a, b, d], k) => {
+    const ea = Math.max(NET.at[a], NET.at[b]);
+    const p = eo(seg(lt, ea, ea + 1.2)); if (p <= 0) return;
+    dust(line(NET.nodes[a], NET.nodes[b]), 0, p, k % 5 === 0 ? 'gold' : 'cyan', t, { n: Math.round(d / 8), w: 3, seed: 7000 + k * 50, a: A * D * 0.65 });
+  });
+  NET.nodes.forEach((p, k) => cnode(p[0], p[1], k % 6 === 0 ? 'gold' : 'white', NET.at[k], lt, A * D, k % 6 === 0 ? 6 : 4.5));
+  particleTitle(TP.title, lt, A * seg(lt, 8.6, 9.4), t, 9, 12, 900);
+  dot(960, 450, 520, 'gold', A * seg(lt, 11, 12.5) * 0.1);
+  txt('让全世界的人，一起写代码', 960, 640, { size: 28, col: '#d9d1bf', a: A * seg(lt, 11.4, 12.4) });
+}
+
+/* ---------------- timeline ---------------- */
+const SCENES = [
+  { s: 0, e: 12, f: s1 },
+  { s: 12, e: 30, f: s2, l: ['BEFORE', '没有版本控制的日子'] },
+  { s: 30, e: 52, f: s3, l: ['2005', '林纳斯·托瓦兹 · Git 诞生'] },
+  { s: 52, e: 68, f: s4, l: ['BRANCH', '分支与合并'] },
+  { s: 68, e: 92, f: s5, l: ['2008', '旧金山 · GitHub 上线'] },
+  { s: 92, e: 112, f: s6, l: ['USE', '人们用它做什么'] },
+  { s: 112, e: 148, f: s7, l: ['HOW', '一次完整的协作流程'] },
+  { s: 148, e: 166, f: s8, l: ['OPEN SOURCE', '开源的魔法'] },
+  { s: 166, e: 180, f: s9, l: ['RECAP', '四个关键词'] },
+  { s: 180, e: 194, f: s10 },
+];
+const SUBS = [
+  [1.5, 6, '超过一亿名开发者，把代码放在同一个地方。', 'More than 100 million developers keep their code in one place.'],
+  [6.5, 11.5, '它叫【GitHub】。', 'It is called GitHub.'],
+  [13, 18, '写代码，和写论文一样：改一次，存一份。', 'Writing code is like writing a paper: every change, another copy.'],
+  [18.5, 23.5, '最终版、最终版2、【真的最终版】……', 'final, final2, final_for_real…'],
+  [24, 29.5, '如果十个人同时改同一个文件，【谁的才算数】？', 'And when ten people edit the same file, whose version wins?'],
+  [31, 36, '2005 年，Linux 的作者林纳斯写了一个工具：【Git】。', 'In 2005, Linus Torvalds, creator of Linux, wrote a tool called Git.'],
+  [36.5, 42, '每次修改，Git 都拍下一张【快照】，叫作 commit。', 'Every change becomes a snapshot, called a commit.'],
+  [42.5, 47, '每张快照都记着：谁、在什么时候、改了什么。', 'Each one records who changed what, and when.'],
+  [47.5, 51.5, '写坏了？随时可以【回到过去】任何一刻。', 'Broke something? Travel back to any moment.'],
+  [53, 58, '想试新想法，又怕弄坏主线？开一个【分支】（branch）。', 'Want to experiment without breaking the main line? Create a branch.'],
+  [58.5, 62.5, '两条线各自生长，互不打扰。', 'Both lines grow on their own, without interfering.'],
+  [63, 67.5, '试成功了，再【合并】（merge）回主线。', 'When it works, merge it back.'],
+  [69, 74, '但 Git 只记录你【自己电脑】上的历史。', 'But Git only keeps history on your own computer.'],
+  [74.5, 80, '2008 年，GitHub 上线，把这些仓库搬上了【云端】。', 'In 2008, GitHub launched and moved these repositories to the cloud.'],
+  [80.5, 86, '全世界的人，都能连接到同一个仓库。', 'Anyone in the world can connect to the same repository.'],
+  [86.5, 91.5, '记住：Git 是【工具】，GitHub 是用 Git 协作的【平台】。', 'Remember: Git is the tool; GitHub is the platform built around it.'],
+  [93, 98, '人们在 GitHub 上【托管代码】，也展示自己的作品。', 'People host their code here, and show their work.'],
+  [98.5, 103.5, '在 Issues 里报告问题，在 Pull Request 里【审查】彼此的修改。', "Report problems in Issues; review each other's changes in Pull Requests."],
+  [104, 108.5, '用 Actions 【自动】测试、自动部署。', 'Automate testing and deployment with Actions.'],
+  [109, 111.5, 'VS Code、React、Python，都在这里【开源协作】。', 'VS Code, React, Python — all built in the open, here.'],
+  [113, 118, '第一步：在 GitHub 上新建一个【仓库】（Repository）。', 'Step 1: create a repository on GitHub.'],
+  [118.5, 124, '第二步：用 git clone 把它【下载】到自己电脑。', 'Step 2: clone it to your computer.'],
+  [124.5, 130, '第三步：写代码，用 git add 和 git commit 【存档】。', 'Step 3: write code, then add and commit to save the change.'],
+  [130.5, 136, '第四步：git push，把提交【推送】到 GitHub。', 'Step 4: push your commits to GitHub.'],
+  [136.5, 142, '第五步：发起 Pull Request，请同伴【审查】你的修改。', 'Step 5: open a pull request and ask a teammate to review it.'],
+  [142.5, 147.5, '审查通过就【合并】，大家用 git pull 拿到最新代码。', 'Approved and merged — everyone runs git pull to get the latest.'],
+  [149, 154, '看到别人的项目有 bug？先 【Fork】，复制一份到自己名下。', "Found a bug in someone's project? Fork it — copy it to your account."],
+  [154.5, 159.5, '修好它，再向原项目发一个 Pull Request。', 'Fix it, then send a pull request back to the original.'],
+  [160, 165.5, '一个陌生人的修改，就这样进入了【全世界】都在用的软件。', "That's how a stranger's fix ends up in software the whole world uses."],
+  [167, 172, '四个词，读懂 GitHub。', 'Four words to understand GitHub.'],
+  [172.5, 179, '仓库、提交、分支、拉取请求——这就是 GitHub 的【骨架】。', 'Repository, commit, branch, pull request — the skeleton of GitHub.'],
+  [181, 186.5, '每一个 commit 是一个节点，每一次合并，是一条【连接】。', 'Every commit is a node. Every merge, a connection.'],
+  [187, 193, '【GitHub】，让全世界的人一起写代码。', 'GitHub — where the whole world writes code together.'],
+];
+
+function renderFrame(t) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  background(t);
+  for (const sc of SCENES) {
+    if (t < sc.s || t >= sc.e) continue;
+    const lt = t - sc.s, A = win(lt, 0, sc.e - sc.s, 0.9);
+    sc.f(lt, A, t);
+    if (sc.l) label(sc.l[0], sc.l[1], A * seg(lt, 0.4, 1.4));
+  }
+  vignette();
+  for (const [a, b, zh, en] of SUBS) if (t >= a && t < b) subtitle(zh, en, t - a, b - a);
+  const fade = Math.max(1 - seg(t, 0, 1.2), seg(t, DURATION - 2, DURATION));
+  if (fade > 0) { ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = fade; ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); }
+  ctx.globalAlpha = 1;
+}
+
+async function init() {
+  await Promise.all([
+    document.fonts.load(`40px ${SERIF}`, '中文字幕'), document.fonts.load(`600 40px ${SERIF}`, '中文'),
+    document.fonts.load(`700 28px ${SERIF}`, '2005'), document.fonts.load(`600 40px ${SERIF_EN}`, 'GitHub'),
+    document.fonts.load(`italic 22px ${SERIF_EN}`, 'abc'), document.fonts.load(`18px ${MONO}`, 'git'),
+  ]);
+  TP.title = makeTextPts('GitHub', 250, 960, 450, 5);
+  buildNet();
+  window.ready = true;
+}
+window.renderFrame = renderFrame;
+window.DURATION = DURATION;
+
+const params = new URLSearchParams(location.search);
+init().then(() => {
+  if (params.has('render')) { document.body.classList.add('render'); return; }
+  document.body.classList.add('play');
+  const t0 = parseFloat(params.get('t') || '0');
+  renderFrame(t0);
+  const music = document.getElementById('music');
+  document.getElementById('start').addEventListener('click', e => {
+    e.currentTarget.remove();
+    music.currentTime = t0; music.play().catch(() => {});
+    const start = performance.now() - t0 * 1000;
+    const loop = () => {
+      const t = music.paused || music.error ? (performance.now() - start) / 1000 : music.currentTime;
+      if (t > DURATION) return;
+      renderFrame(t); requestAnimationFrame(loop);
+    };
+    loop();
+  });
+});
+</script>
+</body>
+</html>
