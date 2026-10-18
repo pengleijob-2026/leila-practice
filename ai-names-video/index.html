@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>大模型的名字，没有一个是乱起的 · 126 BPM</title>
+<style>
+  :root { --c: #a99cff; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  body { color: #fff; font-family: "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; flex: none; }
+  #fx { position: absolute; inset: 0; }
+  .layer { position: absolute; inset: 0; pointer-events: none; }
+  .serif { font-family: "Noto Serif CJK SC", "Songti SC", "Noto Serif", serif; }
+  .mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", Menlo, monospace; }
+  em { font-style: normal; color: var(--c); text-shadow: 0 0 18px var(--c); }
+
+  #grain { width: 100%; height: 100%; opacity: 0.035; mix-blend-mode: screen; }
+  #vignette { background: radial-gradient(ellipse at 50% 48%, transparent 50%, rgba(0,0,0,0.8) 100%); }
+  #flash { background: #fff; opacity: 0; }
+
+  /* subtitle, reference-style: thin serif + italic english */
+  #sub { position: absolute; left: 0; right: 0; top: 905px; text-align: center; }
+  #subZh { font-size: 40px; letter-spacing: 0.14em; color: #eceaf6; font-weight: 400; white-space: nowrap; }
+  #subLine { width: 70px; height: 1px; margin: 16px auto 12px; background: var(--c); box-shadow: 0 0 10px var(--c); }
+  #subEn { font-family: "Noto Serif", Georgia, serif; font-style: italic; font-size: 23px; color: rgba(235,235,255,0.62); letter-spacing: 0.03em; white-space: nowrap; }
+
+  /* model title block (left column) */
+  #title { position: absolute; left: 130px; top: 300px; width: 660px; }
+  #tTag { font-size: 20px; letter-spacing: 0.3em; color: var(--c); opacity: 0.9; }
+  #tTag::before { content: ""; display: inline-block; width: 40px; height: 1px; background: var(--c); vertical-align: middle; margin-right: 16px; }
+  #tName { margin-top: 18px; font-size: 128px; line-height: 1.05; font-weight: 700; letter-spacing: 0.02em; white-space: nowrap; text-shadow: 0 0 40px rgba(255,255,255,0.25); }
+  #tEq { margin-top: 18px; font-size: 54px; font-weight: 700; color: var(--c); white-space: nowrap; text-shadow: 0 0 26px var(--c); }
+  #tDesc { margin-top: 14px; font-size: 26px; color: rgba(255,255,255,0.62); letter-spacing: 0.08em; white-space: nowrap; }
+
+  /* company block (center, under logo) */
+  #comp { position: absolute; left: 0; right: 0; top: 690px; text-align: center; }
+  #cTag { font-size: 20px; letter-spacing: 0.4em; color: var(--c); }
+  #cName { margin-top: 8px; font-size: 76px; font-weight: 700; letter-spacing: 0.12em; white-space: nowrap; }
+  #cDesc { margin-top: 2px; font-size: 24px; letter-spacing: 0.2em; color: rgba(255,255,255,0.6); }
+  #chips { position: absolute; left: 0; right: 0; top: 150px; display: flex; justify-content: center; gap: 18px; }
+  .chip { padding: 8px 22px; font-size: 24px; letter-spacing: 0.12em; border: 1px solid var(--c); color: #fff; background: rgba(255,255,255,0.04); box-shadow: 0 0 18px rgba(0,0,0,0.5), inset 0 0 14px rgba(255,255,255,0.05); }
+  .chip::before { content: "◆ "; color: var(--c); font-size: 16px; vertical-align: 3px; }
+
+  #center { position: absolute; left: 0; right: 0; top: 440px; text-align: center; font-size: 76px; font-weight: 700; letter-spacing: 0.2em; text-shadow: 0 0 40px var(--c); white-space: nowrap; }
+
+  #hud { font-size: 16px; color: rgba(255,255,255,0.4); letter-spacing: 0.25em; }
+  #hud .tl { position: absolute; left: 60px; top: 50px; }
+  #hud .tr { position: absolute; right: 60px; top: 50px; text-align: right; }
+  #hud .bl { position: absolute; left: 60px; bottom: 44px; }
+  #progress { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--c); box-shadow: 0 0 10px var(--c); }
+
+  #ui { position: fixed; left: 12px; bottom: 12px; z-index: 10; display: flex; gap: 8px; align-items: center; background: rgba(20,22,30,0.85); padding: 10px 12px; border-radius: 10px; font: 13px/1.4 system-ui, sans-serif; color: #ddd; flex-wrap: wrap; }
+  #ui button, #ui label.btn { background: #6b5cff; color: #fff; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  #ui input[type=number] { width: 70px; }
+  #ui input[type=range] { width: 260px; }
+  body.render #ui { display: none; }
+</style>
+</head>
+<body>
+<div id="wrap"><div id="stage">
+  <canvas id="fx" width="1920" height="1080"></canvas>
+  <canvas id="grain" class="layer" width="480" height="270"></canvas>
+  <div class="layer" id="vignette"></div>
+  <div class="layer" id="text">
+    <div id="title"><div id="tTag" class="mono"></div><div id="tName"></div><div id="tEq"></div><div id="tDesc" class="serif"></div></div>
+    <div id="comp"><div id="cTag" class="mono"></div><div id="cName"></div><div id="cDesc" class="serif"></div><div id="chips"></div></div>
+    <div id="center" class="serif"></div>
+    <div id="sub" class="serif"><div id="subZh"></div><div id="subLine"></div><div id="subEn"></div></div>
+  </div>
+  <div class="layer mono" id="hud"><div class="tl">THE NAMES OF AI</div><div class="tr" id="hudR"></div><div class="bl" id="hudB"></div><div id="progress"></div></div>
+  <div class="layer" id="flash"></div>
+</div></div>
+
+<div id="ui">
+  <button id="play">▶ 播放</button>
+  <input id="seek" type="range" min="0" max="1000" value="0" />
+  <span id="time">0.00s</span>
+  <label class="btn">选择配乐 (We Never)<input id="music" type="file" accept="audio/*" hidden /></label>
+  <span>配乐起点(秒，落在重拍)</span><input id="offset" type="number" step="0.01" value="0" />
+</div>
+
+<script src="logos.js"></script>
+<script>
+// ================= beat clock =================
+const BPM = 126, BEAT = 60 / BPM;
+const W = 1920, H = 1080, N = 14000;
+const MX = 1235, MY = 455;     // model-shape anchor (right of the title column)
+const LX = 960, LY = 365;      // logo anchor
+
+// ================= helpers =================
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (b, s, l) => clamp((b - s) / l);
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeInOut = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const pulse = (b, k = 6) => Math.exp(-(b - Math.floor(b)) * k);
+function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+function gauss(n) { const u = Math.max(1e-6, hash(n)), v = hash(n + 0.5); return Math.sqrt(-2 * Math.log(u)) * Math.cos(6.2831853 * v); }
+const hex = h => { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+
+// ================= shape library =================
+// a shape is N particle targets (local px coords around 0,0) + colors + fill fraction
+const SH = {};
+function mkShape() { return { x: new Float32Array(N), y: new Float32Array(N), r: new Uint8Array(N), g: new Uint8Array(N), b: new Uint8Array(N), f: 1 }; }
+function proc(name, fn, f = 1) {
+  const s = mkShape(); s.f = f; const o = [0, 0, 255, 255, 255];
+  for (let i = 0; i < N; i++) { o[2] = o[3] = o[4] = 255; fn(i, o); s.x[i] = o[0]; s.y[i] = o[1]; s.r[i] = o[2]; s.g[i] = o[3]; s.b[i] = o[4]; }
+  SH[name] = s;
+}
+function fromCanvas(name, w, h, draw, opt = {}) {
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  draw(g, w, h);
+  const d = g.getImageData(0, 0, w, h).data, px = [];
+  // edge-weighted sampling: outlines and colour boundaries get more particles,
+  // so interior features (eyes, folds, strokes) survive as particles
+  const lum = (k) => d[k + 3] < 110 ? -999 : (d[k] * 0.3 + d[k + 1] * 0.59 + d[k + 2] * 0.11);
+  const cdf = [];
+  let acc = 0;
+  for (let y = 2; y < h - 2; y += 2) for (let x = 2; x < w - 2; x += 2) {
+    const k = (y * w + x) * 4;
+    if (d[k + 3] <= 110) continue;
+    const l = lum(k), e = Math.max(Math.abs(l - lum(k - 8)), Math.abs(l - lum(k + 8)), Math.abs(l - lum(k - w * 8)), Math.abs(l - lum(k + w * 8)));
+    acc += 1 + (opt.edge ?? 5) * Math.min(1, e / 60);
+    px.push(x, y, d[k], d[k + 1], d[k + 2]); cdf.push(acc);
+  }
+  const cnt = px.length / 5, s = mkShape(); s.f = opt.f ?? 1;
+  const pick = (u) => { let lo = 0, hi = cnt - 1; const v = u * acc; while (lo < hi) { const mid = (lo + hi) >> 1; if (cdf[mid] < v) lo = mid + 1; else hi = mid; } return lo; };
+  const tint = opt.color ? hex(opt.color) : null;
+  for (let i = 0; i < N; i++) {
+    const j = pick(hash(i * 1.618 + name.length * 7.1)) * 5;
+    s.x[i] = px[j] - w / 2 + (hash(i * 2.3) - 0.5) * 2.4;
+    s.y[i] = px[j + 1] - h / 2 + (hash(i * 3.7) - 0.5) * 2.4;
+    let r = px[j + 2], gg = px[j + 3], b = px[j + 4];
+    if (tint) { const v = 0.75 + 0.25 * hash(i * 9.1); [r, gg, b] = tint.map(t => t * v); }
+    else if (!opt.raw) { const m = Math.max(r, gg, b); if (m < 70) { r = gg = b = 150; } else { const k2 = 255 / m; r *= k2; gg *= k2; b *= k2; } }
+    s.r[i] = r; s.g[i] = gg; s.b[i] = b;
+  }
+  SH[name] = s;
+}
+function svgImage(name, color) {
+  let svg = window.LOGOS[name].replace(/currentColor/g, color || "#fff");
+  if (!/fill=/.test(svg.slice(0, 200)) && color) svg = svg.replace("<svg", `<svg fill="${color}"`);
+  svg = svg.replace("<svg", '<svg width="512" height="512"');
+  return new Promise(res => { const im = new Image(); im.onload = () => res(im); im.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg); });
+}
+const emojiFont = s => `${s}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", sans-serif`;
+function emojiShape(name, ch, size, f = 1) {
+  fromCanvas(name, size * 1.3, size * 1.3, (g, w, h) => { g.font = emojiFont(size); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(ch, w / 2, h / 2 + size * 0.06); }, { f });
+}
+function textShape(name, str, font, w, h, color, f = 1, lines) {
+  fromCanvas(name, w, h, (g) => {
+    g.font = font; g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#fff";
+    (lines || [str]).forEach((l, k, arr) => g.fillText(l, w / 2, h / 2 + (k - (arr.length - 1) / 2) * (h / arr.length)));
+  }, { color, f });
+}
+
+const LOGO_SET = [
+  ["L_openai", "openai", "#ffffff"], ["L_claude", "claude-color"], ["L_deepmind", "deepmind-color"], ["L_meta", "meta-color"],
+  ["L_xai", "xai", "#ffffff"], ["L_deepseek", "deepseek-color"], ["L_qwen", "qwen-color"], ["L_moon", "moonshot", "#ffffff"]
+];
+async function buildShapes() {
+  const imgs = {};
+  for (const [key, file, color] of LOGO_SET) {
+    imgs[key] = await svgImage(file, color);
+    fromCanvas(key, 520, 520, g => g.drawImage(imgs[key], 10, 10, 500, 500), { f: 0.8 });
+  }
+  // outro: 8 logos in a 4x2 grid
+  fromCanvas("allLogos", 1500, 640, g => {
+    LOGO_SET.forEach(([key], k) => { const cx = 190 + (k % 4) * 373, cy = 150 + Math.floor(k / 4) * 330; g.drawImage(imgs[key], cx - 95, cy - 95, 190, 190); });
+  }, { f: 0.85 });
+
+  // cosmic web: clusters + filaments
+  const nodes = Array.from({ length: 16 }, (_, k) => [(hash(k + 40) - 0.5) * 1600, (hash(k + 80) - 0.5) * 700]);
+  const edges = [];
+  nodes.forEach((a, i) => nodes.forEach((b, j) => { if (j > i && Math.hypot(a[0] - b[0], a[1] - b[1]) < 470) edges.push([i, j]); }));
+  SH.webNodes = nodes; SH.webEdges = edges;
+  proc("web", (i, o) => {
+    const purple = [150 + 80 * hash(i), 130 + 60 * hash(i + 1), 255];
+    if (hash(i * 4.4) < 0.45) { const n = nodes[Math.floor(hash(i * 1.3) * nodes.length)]; const sp = 18 + 40 * hash(i * 9) ** 2; o[0] = n[0] + gauss(i) * sp; o[1] = n[1] + gauss(i + 3) * sp; }
+    else { const [a, b] = edges[Math.floor(hash(i * 2.9) * edges.length)].map(k => nodes[k]); const t = hash(i * 6.1); o[0] = a[0] + (b[0] - a[0]) * t + gauss(i + 5) * 14; o[1] = a[1] + (b[1] - a[1]) * t + gauss(i + 7) * 14; }
+    [o[2], o[3], o[4]] = hash(i * 8) < 0.3 ? [255, 255, 255] : purple;
+  });
+  proc("core", (i, o) => { const r = Math.abs(gauss(i)) * 110, a = hash(i * 3) * 6.283; o[0] = Math.cos(a) * r * 1.4; o[1] = Math.sin(a) * r * 0.9; }, 0.7);
+
+  // GPT: token boxes
+  proc("tokens", (i, o) => {
+    const k = Math.floor(hash(i * 1.1) * 7), cx = (k - 3) * 140, cy = 150, w = 110, hh = 76;
+    if (hash(i * 2.2) < 0.75) { const p = hash(i * 3.3) * 2 * (w + hh); let x, y; if (p < w) { x = p - w / 2; y = -hh / 2; } else if (p < w + hh) { x = w / 2; y = p - w - hh / 2; } else if (p < 2 * w + hh) { x = w / 2 - (p - w - hh); y = hh / 2; } else { x = -w / 2; y = hh / 2 - (p - 2 * w - hh); } o[0] = cx + x; o[1] = cy + y; }
+    else { o[0] = cx + (hash(i * 4.4) - 0.5) * w; o[1] = cy + (hash(i * 5.5) - 0.5) * hh; }
+    [o[2], o[3], o[4]] = [110, 240, 200];
+  }, 0.55);
+  // Sora: sky / clouds (dynamic drift handled in state)
+  proc("sky", (i, o) => { const k = Math.floor(hash(i) * 7); const cx = (k - 3) * 230 + gauss(k + 11) * 30, cy = -60 + gauss(k + 13) * 80; o[0] = cx + gauss(i + 2) * 120; o[1] = cy + gauss(i + 4) * 46; [o[2], o[3], o[4]] = [190, 225, 255]; }, 0.8);
+  textShape("kong", "空", '700 520px "Noto Serif CJK SC"', 620, 620, "#c8e8ff", 1);
+  fromCanvas("dalle", 1000, 520, g => { g.font = emojiFont(330); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("🎨", 250, 260); g.fillText("🤖", 750, 260); }, { f: 0.85 });
+
+  // Claude
+  textShape("bits", "", '700 72px "DejaVu Sans Mono"', 900, 520, "#ffb08a", 0.6, ["0 1 1 0 1 0 0 1", "1 0 0 1 1 1 0 1", "0 1 0 1 0 0 1 1", "1 1 0 0 1 0 1 0"]);
+  proc("haiku", (i, o) => { const L = [5, 7, 5], k = Math.floor(hash(i) * 3); const len = L[k] * 90; o[0] = (hash(i * 2.7) - 0.5) * len; o[1] = (k - 1) * 110 + gauss(i + 1) * 5; [o[2], o[3], o[4]] = [255, 190, 160]; }, 0.45);
+  proc("sonnet", (i, o) => { const k = Math.floor(hash(i) * 14); const len = 560 + 80 * hash(k + 3); o[0] = (hash(i * 2.7) - 0.5) * len; o[1] = (k - 6.5) * 40 + gauss(i + 1) * 3; [o[2], o[3], o[4]] = [255, 175, 140]; }, 0.7);
+  proc("opus", (i, o) => {
+    if (hash(i * 5) < 0.55) { const r = Math.abs(gauss(i)) * 150, a = hash(i * 3) * 6.283; o[0] = Math.cos(a) * r; o[1] = Math.sin(a) * r; }
+    else { const r = 230 + hash(i * 7) * 170, a = hash(i * 9) * 6.283; o[0] = Math.cos(a) * r; o[1] = Math.sin(a) * r * 0.32; }
+    [o[2], o[3], o[4]] = hash(i * 2) < 0.4 ? [255, 240, 230] : [255, 150, 110];
+  }, 1);
+
+  // Gemini constellation (Castor & Pollux on top)
+  const gem = [[-120, -300, 2.2], [60, -270, 2.4], [-150, -150, 1], [40, -120, 1], [-190, 0, 1], [10, 10, 1.1], [-240, 160, 1], [-120, 170, 1], [-10, 150, 1], [90, 170, 1], [-300, 300, 1.2], [140, 300, 1.2]];
+  const gemE = [[0, 2], [2, 4], [4, 6], [4, 7], [1, 3], [3, 5], [5, 8], [5, 9], [6, 10], [9, 11], [2, 3]];
+  SH.gemStars = gem; SH.gemEdges = gemE;
+  proc("gemini", (i, o) => {
+    if (hash(i * 3) < 0.7) { const s = gem[Math.floor(hash(i * 1.7) * gem.length)]; const sp = 6 + 10 * s[2] * hash(i * 5) ** 2; o[0] = s[0] + gauss(i) * sp; o[1] = s[1] + gauss(i + 1) * sp; }
+    else { const [a, b] = gemE[Math.floor(hash(i * 2.1) * gemE.length)].map(k => gem[k]); const t = hash(i * 4.2); o[0] = a[0] + (b[0] - a[0]) * t; o[1] = a[1] + (b[1] - a[1]) * t; }
+    [o[2], o[3], o[4]] = hash(i) < 0.5 ? [120, 175, 255] : [205, 170, 255];
+  }, 0.55);
+  emojiShape("banana", "🍌", 460, 0.8);
+  emojiShape("llama", "🦙", 520, 0.9);
+  emojiShape("compass", "🧭", 440, 0.6);
+  emojiShape("cowboy", "🤠", 440, 0.8);
+  emojiShape("mammoth", "🐘", 470, 1);
+  emojiShape("book", "📖", 470, 0.85);
+  // Janus: two face profiles joined at the back of the head
+  fromCanvas("masks", 900, 560, g => {
+    const prof = [[0, -200], [60, -206], [118, -182], [152, -132], [160, -84], [148, -60], [192, -14], [160, 2], [170, 26], [158, 40], [166, 60], [150, 80], [152, 112], [122, 132], [92, 136], [84, 200], [0, 200]];
+    [[1, "#c9a7ff"], [-1, "#8fb6ff"]].forEach(([dir, col]) => {
+      g.save(); g.translate(450, 280); g.scale(dir * 1.25, 1.25);
+      g.fillStyle = col; g.beginPath(); prof.forEach(([x, y], k) => k ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); g.fill();
+      g.fillStyle = "#1b1630"; g.beginPath(); g.ellipse(118, -66, 13, 7, 0, 0, 6.283); g.fill();
+      g.strokeStyle = "#1b1630"; g.lineWidth = 5; g.beginPath(); g.moveTo(110, -98); g.quadraticCurveTo(128, -106, 146, -96); g.stroke();
+      g.restore();
+    });
+  }, { raw: true, f: 0.85, edge: 8 });
+  textShape("qiusuo", "求索", '700 330px "Noto Serif CJK SC"', 900, 460, "#b4c2ff", 1);
+  proc("chain", (i, o) => {
+    const pts = [[-420, 180], [-210, 60], [0, 120], [210, -40], [420, -170]];
+    if (hash(i * 3) < 0.6) { const p = pts[Math.floor(hash(i * 1.9) * 5)]; o[0] = p[0] + gauss(i) * 16; o[1] = p[1] + gauss(i + 1) * 16; }
+    else { const k = Math.floor(hash(i * 2.3) * 4), t = hash(i * 4.1); o[0] = pts[k][0] + (pts[k + 1][0] - pts[k][0]) * t; o[1] = pts[k][1] + (pts[k + 1][1] - pts[k][1]) * t + gauss(i + 2) * 2; }
+    [o[2], o[3], o[4]] = [150, 170, 255];
+  }, 0.5);
+  SH.chainPts = [[-420, 180], [-210, 60], [0, 120], [210, -40], [420, -170]];
+  textShape("questions", "", '700 92px "Noto Serif CJK SC"', 1000, 560, "#b7a8ff", 0.75, ["？ ？ ？ ？ ？ ？ ？", "？ ？ ？ ？ ？ ？ ？", "？ ？ ？ ？ ？ ？ ？", "？ ？ ？ ？ ？ ？ ？"]);
+  textShape("wen", "问", '700 520px "Noto Serif CJK SC"', 620, 620, "#c9bcff", 1);
+  textShape("qwq", "QwQ", '900 330px "Noto Sans CJK SC"', 1000, 480, "#c3b6ff", 0.8);
+  // Pink Floyd prism
+  const spec = ["#ff3b3b", "#ff9a2e", "#ffe53b", "#3bff6a", "#3bb2ff", "#a64bff"].map(hex);
+  proc("prism", (i, o) => {
+    const u = hash(i * 1.3);
+    if (u < 0.3) { const k = Math.floor(hash(i * 2) * 3), t = hash(i * 3.1); const P = [[0, -210], [210, 150], [-210, 150]]; const a = P[k], b = P[(k + 1) % 3]; o[0] = a[0] + (b[0] - a[0]) * t; o[1] = a[1] + (b[1] - a[1]) * t; }
+    else if (u < 0.45) { const t = hash(i * 4.2); o[0] = -760 + t * 660; o[1] = 120 - t * 150 + gauss(i) * 3; }
+    else { const k = Math.floor(hash(i * 5.3) * 6), t = hash(i * 6.4); o[0] = 105 + t * 640; o[1] = -30 + t * (40 + k * 26) + gauss(i) * 5 + k * 10 * t; [o[2], o[3], o[4]] = spec[k]; }
+  }, 0.7);
+  fromCanvas("moonRocket", 1000, 640, g => {
+    const gr = g.createLinearGradient(380, 0, 900, 0); gr.addColorStop(0, "#2a2d3a"); gr.addColorStop(0.45, "#3c4050"); gr.addColorStop(0.55, "#dfe6ff"); gr.addColorStop(1, "#ffffff");
+    g.fillStyle = gr; g.beginPath(); g.arc(640, 320, 260, 0, 6.283); g.fill();
+    g.save(); g.translate(200, 470); g.rotate(-0.1); g.font = emojiFont(240); g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("🚀", 0, 0); g.restore();
+  }, { raw: true, f: 0.85 });
+  // ambient dust positions
+  proc("dust", (i, o) => { o[0] = hash(i * 5.1) * W; o[1] = hash(i * 7.7) * H; });
+}
+
+// dynamic shapes (time-dependent), t in seconds
+const DYN = {
+  twins(i, t, o) {
+    const side = i % 2, a = t * 1.3 + side * Math.PI, R = 200;
+    const r = Math.abs(gauss(i)) * 70, q = hash(i * 3) * 6.283;
+    o.x = Math.cos(a) * R + Math.cos(q) * r; o.y = Math.sin(a) * R * 0.45 + Math.sin(q) * r;
+    [o.r, o.g, o.b] = side ? [120, 175, 255] : [205, 160, 255];
+  },
+  vortex(i, t, o) {
+    const r0 = hash(i * 1.7) * 420, r = ((r0 - t * 70) % 420 + 420) % 420 + 6;
+    const arm = Math.floor(hash(i * 2.2) * 3) * 2.094;
+    const a = arm + r * 0.014 + t * 0.9 + gauss(i) * 0.18;
+    o.x = Math.cos(a) * r; o.y = Math.sin(a) * r * 0.55;
+    const k = 1 - r / 430; [o.r, o.g, o.b] = [170 + 85 * k, 140 + 115 * k, 255];
+  },
+  abyss(i, t, o) {
+    const d = ((hash(i * 3.3) + t * 0.22) % 1);
+    const spread = 40 + 330 * (1 - d);
+    o.x = gauss(i) * spread * 0.5; o.y = -380 + d * 760;
+    const k = 1 - d * 0.75; [o.r, o.g, o.b] = [90 * k + 20, 120 * k + 30, 255 * k];
+  },
+  wave(i, t, o) {
+    const x = (hash(i * 1.9) - 0.5) * 1100, env = Math.cos(x / 1100 * Math.PI);
+    o.x = x; o.y = Math.sin(x * 0.014 - t * 4) * 150 * env + gauss(i) * (4 + 6 * env);
+    [o.r, o.g, o.b] = [255, 170 + 60 * hash(i), 130];
+  },
+  skyDrift(i, t, o) {
+    const s = SH.sky; o.x = ((s.x[i] + t * 40 + 900) % 1800 + 1800) % 1800 - 900; o.y = s.y[i];
+    o.r = s.r[i]; o.g = s.g[i]; o.b = s.b[i];
+  }
+};
+const DYN_F = { twins: 0.6, vortex: 0.85, abyss: 0.7, wave: 0.55, skyDrift: 0.8 };
+
+// ================= storyboard =================
+const C = [
+  { key: "OPENAI", logo: "L_openai", c: "#6ee7c8", name: "OpenAI", tag: "01 / 08 · 美国 · 旧金山", desc: "Open + AI · 以开放研究起家",
+    zh: "OpenAI 的信念：确保 <em>AGI 造福全人类</em>", en: "Ensure that artificial general intelligence benefits all of humanity.", chips: ["全能通用", "多模态", "深度推理"],
+    models: [
+      { len: 8, states: [{ shape: "tokens", ov: "attention" }], t: ["GPT", "= 生成式预训练变换器", "Generative Pre-trained Transformer"],
+        zh: "三个单词就是配方：<em>生成 · 预训练 · Transformer</em>", en: "The name is the recipe." },
+      { len: 8, states: [{ dyn: "skyDrift" }, { at: 4, shape: "kong" }], t: ["Sora", "= 日语「空」", "そら · 天空"],
+        zh: "取自日语的「天空」，寓意<em>无限的创造力</em>", en: "The Japanese word for sky — limitless creative potential." },
+      { len: 8, states: [{ shape: "dalle", ov: "dalle" }], t: ["DALL·E", "= 达利 + 瓦力", "Salvador Dalí × WALL·E"],
+        zh: "超现实主义画家<em>达利</em>，加上皮克斯机器人<em>瓦力</em>", en: "Part surrealist painter, part Pixar robot." }
+    ] },
+  { key: "ANTHROPIC", logo: "L_claude", c: "#ff9f7a", name: "Anthropic", tag: "02 / 08 · 美国 · 旧金山", desc: "Anthropic = 与人类有关的",
+    zh: "Anthropic 的信念：<em>把安全放在最前沿</em>", en: "AI research and products that put safety at the frontier.", chips: ["写代码", "长文本", "智能体"],
+    models: [
+      { len: 8, states: [{ shape: "bits" }, { at: 4, dyn: "wave" }], t: ["Claude", "= 克劳德 · 香农", "Claude Shannon · 信息论之父"],
+        zh: "致敬信息论之父香农：他用 <em>0 和 1</em> 丈量了信息", en: "A nod to Claude Shannon, father of information theory." },
+      { len: 12, states: [
+          { shape: "haiku", t: ["Haiku", "= 俳句", "最短的诗 · 最快最轻"] },
+          { at: 4, shape: "sonnet", t: ["Sonnet", "= 十四行诗", "14 行 · 均衡主力"] },
+          { at: 8, shape: "opus", t: ["Opus", "= 巨作", "鸿篇巨制 · 最强旗舰"] }],
+        zh: "三档模型用<em>文学体裁</em>命名：篇幅越长，模型越大", en: "Three sizes, three literary forms." }
+    ] },
+  { key: "GOOGLE DEEPMIND", logo: "L_deepmind", c: "#8fb8ff", name: "Google DeepMind", tag: "03 / 08 · 英国 · 伦敦", desc: "Deep 深度学习 + Mind 心智",
+    zh: "DeepMind 的信念：<em>先解决智能</em>，再用智能解决一切", en: "Solve intelligence, then use that to solve everything else.", chips: ["原生多模态", "超长上下文", "谷歌生态"],
+    models: [
+      { len: 8, states: [{ dyn: "twins" }, { at: 4, shape: "gemini", ov: "gemini" }], t: ["Gemini", "= 双子座", "Google Brain × DeepMind"],
+        zh: "两支团队<em>合二为一</em>，就像夜空里的双子座", en: "Two teams become one — like the Twins in the night sky." },
+      { len: 8, states: [{ shape: "banana" }, { at: 4, shape: "banana", s: 0.38, ov: "zoom" }], t: ["Nano Banana", "= 迷你香蕉", "Gemini 图像模型的外号"],
+        zh: "内部代号太好记，<em>官方干脆就用了</em>", en: "A codename too catchy to drop." }
+    ] },
+  { key: "META", logo: "L_meta", c: "#6fb0ff", name: "Meta", tag: "04 / 08 · 美国 · 门洛帕克", desc: "Meta = 超越 · 元",
+    zh: "Meta 的信念：<em>开源</em>，才是 AI 的未来", en: "Open source AI is the path forward.", chips: ["开源生态", "本地部署", "二次开发"],
+    models: [
+      { len: 8, states: [{ shape: "llama", ov: "acronym" }], t: ["Llama", "= 美洲驼", "Large Language Model Meta AI"],
+        zh: "缩写 <em>LLaMA</em> 念出来，正好是一只美洲驼", en: "The acronym spells an animal." },
+      { len: 12, states: [
+          { shape: "compass", s: 0.55, t: ["Scout", "= 侦察兵", "最轻 · 跑得最快"] },
+          { at: 4, shape: "cowboy", s: 0.85, t: ["Maverick", "= 特立独行者", "中杯 · 不走寻常路"] },
+          { at: 8, shape: "mammoth", s: 1.2, t: ["Behemoth", "= 圣经巨兽", "最大 · 给其他模型当老师"] }],
+        zh: "Llama 4 家族按<em>体型</em>起名：从侦察兵到巨兽", en: "Named by size — from scout to behemoth." }
+    ] },
+  { key: "XAI", logo: "L_xai", c: "#c3a6ff", name: "xAI", tag: "05 / 08 · 美国 · 马斯克", desc: "Grok 的母公司",
+    zh: "xAI 的信念：<em>理解宇宙的真实本质</em>", en: "Understand the true nature of the universe.", chips: ["实时 X 数据", "敢说敢聊", "推理"],
+    models: [
+      { len: 8, states: [{ shape: "book" }, { at: 4, dyn: "vortex" }], t: ["Grok", "= 彻底领会", "《异乡异客》· 海因莱因 1961"],
+        zh: "科幻小说里的火星语：理解得太透彻，以至于<em>与之融为一体</em>", en: "To understand something so thoroughly that you merge with it." }
+    ] },
+  { key: "DEEPSEEK", logo: "L_deepseek", c: "#8ea2ff", name: "DeepSeek", tag: "06 / 08 · 中国 · 杭州", desc: "深度求索",
+    zh: "DeepSeek 的信念：<em>以好奇心</em>，解开 AGI 之谜", en: "Unravel the mystery of AGI with curiosity.", chips: ["推理", "极致性价比", "开源"],
+    models: [
+      { len: 8, states: [{ dyn: "abyss", ov: "depth" }, { at: 4, shape: "qiusuo" }], t: ["DeepSeek", "= 深度求索", "Deep · Seek"],
+        zh: "向未知的<em>深处</em>，不停追问", en: "Seek deeper into the unknown." },
+      { len: 8, states: [{ shape: "chain", ov: "chain" }], t: ["R1", "R = Reasoning", "推理模型 · 第一代"],
+        zh: "一步一步<em>想清楚</em>，再给出答案", en: "Think step by step, then answer." },
+      { len: 8, states: [{ shape: "masks", ov: "janus" }], t: ["Janus", "= 罗马双面神", "理解 + 生成 一体"],
+        zh: "一张脸<em>看懂图</em>，一张脸<em>画出图</em>", en: "One face reads images, the other paints them." }
+    ] },
+  { key: "QWEN", logo: "L_qwen", c: "#b3a4ff", name: "通义千问", tag: "07 / 08 · 中国 · 杭州 · 阿里", desc: "通义 = 通情达义",
+    zh: "通义的信念：<em>开源开放</em>，全尺寸、全模态", en: "Open models — every size, every modality.", chips: ["中文理解", "开源全家桶", "多语言"],
+    models: [
+      { len: 8, states: [{ shape: "questions" }, { at: 4, shape: "wen" }], t: ["Qwen", "= 千问", "Qian Wen · 拼音"],
+        zh: "千万个问题，<em>有问必答</em>", en: "A thousand questions, all answered." },
+      { len: 8, states: [{ shape: "qwq" }], t: ["QwQ", "= 追问", "推理模型 · 也是颜文字"],
+        zh: "会<em>自己追问自己</em>的千问，名字本身就是个颜文字", en: "It questions itself. The name is an emoticon." }
+    ] },
+  { key: "MOONSHOT", logo: "L_moon", c: "#8cc3ff", name: "月之暗面", tag: "08 / 08 · 中国 · 北京", desc: "Moonshot AI",
+    zh: "月之暗面的信念：<em>做登月级的难事</em>", en: "Moonshot: take on the hardest problems.", chips: ["超长上下文", "长文阅读", "智能体"],
+    models: [
+      { len: 8, states: [{ shape: "prism" }], t: ["月之暗面", "= 一张 1973 年的唱片", "Pink Floyd · The Dark Side of the Moon"],
+        zh: "公司名致敬平克·弗洛伊德的传奇专辑<em>《月之暗面》</em>", en: "Named after Pink Floyd's 1973 album." },
+      { len: 8, states: [{ shape: "moonRocket", ov: "launch" }], t: ["Kimi", "Moonshot = 登月", "月之暗面旗下的 AI 助手"],
+        zh: "英文名 Moonshot：<em>登月</em>，去挑战最难的那件事", en: "Moonshot — aim for the moon." }
+    ] }
+];
+
+// flatten into a global list of states with absolute beats
+const STATES = [];
+let B = 0;
+function push(st) { STATES.push(st); }
+push({ B: 0, kind: "intro", shape: "web", x: 960, y: 470, c: "#a99cff", layout: "sub",
+  sub: ["大模型的名字，<em>没有一个是乱起的</em>", "No model name is random."] });
+push({ B: 8, kind: "state", shape: "core", x: 960, y: 450, c: "#a99cff", layout: "center", center: "8 家公司 · 20 个名字",
+  sub: ["每个名字里，都藏着一家公司的<em>信念</em>", "Every name carries a belief."], ov: "ring" });
+B = 16;
+C.forEach((co, ci) => {
+  push({ B, kind: "company", ci, shape: co.logo, x: LX, y: LY, s: 0.86, c: co.c, layout: "company", ov: "logoRing", sub: [co.zh, co.en] });
+  B += 8;
+  co.models.forEach(m => {
+    m.states.forEach((s, k) => {
+      push({ B: B + (s.at || 0), kind: k === 0 ? "model" : "state", ci, shape: s.shape, dyn: s.dyn, s: s.s, ov: s.ov,
+        x: MX, y: MY, c: co.c, layout: "model", title: s.t || (k === 0 ? m.t : null), sub: k === 0 ? [m.zh, m.en] : null });
+    });
+    B += m.len;
+  });
+});
+push({ B, kind: "company", shape: "allLogos", x: 960, y: 430, c: "#a99cff", layout: "sub", ov: "network",
+  sub: ["名字，是它们写给世界的<em>第一句话</em>", "A name is the first thing a model says to the world."] });
+push({ B: B + 8, kind: "state", shape: "web", x: 960, y: 450, c: "#a99cff", layout: "center", center: "你最常用哪一个？",
+  sub: ["评论区，<em>聊聊你的答案</em>", "Which one do you use the most?"] });
+const TOTAL_BEATS = B + 16, DURATION = TOTAL_BEATS * BEAT;
+// text inheritance
+let lastTitle = null, lastTitleB = 0, lastSub = null, lastSubB = 0;
+STATES.forEach(s => {
+  if (s.layout !== "model") { lastTitle = null; }
+  if (s.title) { lastTitle = s.title; lastTitleB = s.B; }
+  s.tTitle = s.layout === "model" ? lastTitle : null; s.tTitleB = lastTitleB;
+  if (s.sub) { lastSub = s.sub; lastSubB = s.B; }
+  s.tSub = lastSub; s.tSubB = lastSubB;
+  s.rgb = hex(s.c);
+});
+window.VIDEO_META = { BPM, BEAT, DURATION, TOTAL_BEATS, cuts: STATES.map(s => ({ beat: s.B, kind: s.kind })) };
+
+// ================= rendering =================
+const cv = document.getElementById("fx"), ctx = cv.getContext("2d");
+const glowC = document.createElement("canvas"); glowC.width = 480; glowC.height = 270;
+const gctx = glowC.getContext("2d");
+const img = ctx.createImageData(W, H), px = img.data;
+const pcv = document.createElement("canvas"); pcv.width = W; pcv.height = H; const pctx = pcv.getContext("2d");
+const PX = new Float32Array(N), PY = new Float32Array(N), PR = new Float32Array(N), PG = new Float32Array(N), PB = new Float32Array(N), PA = new Float32Array(N);
+const bgC = document.createElement("canvas"); bgC.width = W; bgC.height = H;
+function buildBg() {
+  const g = bgC.getContext("2d");
+  g.fillStyle = "#000"; g.fillRect(0, 0, W, H);
+  for (let k = 0; k < 700; k++) { const a = 0.15 + 0.5 * hash(k * 3.3) ** 3; g.fillStyle = `rgba(220,220,255,${a})`; const s = hash(k * 7) < 0.95 ? 1 : 2; g.fillRect(hash(k * 1.1) * W, hash(k * 2.2) * H, s, s); }
+}
+const star = document.createElement("canvas"); star.width = star.height = 48;
+{ const g = star.getContext("2d"), gr = g.createRadialGradient(24, 24, 0, 24, 24, 24); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.15, "rgba(255,255,255,0.55)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, 48, 48); }
+
+const tmpA = { x: 0, y: 0, r: 0, g: 0, b: 0, a: 1 }, tmpB = { x: 0, y: 0, r: 0, g: 0, b: 0, a: 1 }, dd = { x: 0, y: 0, r: 0, g: 0, b: 0 };
+function evalState(st, i, t, out) {
+  let lx, ly, f;
+  if (st.dyn) { DYN[st.dyn](i, t, dd); lx = dd.x; ly = dd.y; out.r = dd.r; out.g = dd.g; out.b = dd.b; f = DYN_F[st.dyn]; }
+  else { const s = SH[st.shape]; lx = s.x[i]; ly = s.y[i]; out.r = s.r[i]; out.g = s.g[i]; out.b = s.b[i]; f = s.f; }
+  if (hash(i * 3.17 + 0.1) > f) { // unused particle -> ambient dust
+    const d = SH.dust; out.x = d.x[i] + Math.sin(t * 0.3 + i) * 12; out.y = d.y[i] + Math.cos(t * 0.25 + i * 0.7) * 12;
+    out.r = st.rgb[0]; out.g = st.rgb[1]; out.b = st.rgb[2]; out.a = 0.16; return;
+  }
+  const sc = st.s || 1;
+  out.x = st.x + lx * sc; out.y = st.y + ly * sc; out.a = 1;
+}
+function stateAt(b) { let k = 0; while (k + 1 < STATES.length && STATES[k + 1].B <= b) k++; return k; }
+
+function drawParticles(b, t, k) {
+  const cur = STATES[k], prev = STATES[Math.max(0, k - 1)];
+  const lb = b - cur.B;
+  const p = k === 0 ? 1 : easeInOut(prog(lb, 0, 0.9));
+  const amp = { company: 380, model: 220, state: 120, intro: 0 }[cur.kind] * Math.sin(Math.PI * p);
+  const breathe = 1 + 0.035 * pulse(b, 5);
+  for (let i = 0; i < N; i++) {
+    evalState(cur, i, t, tmpB);
+    let x, y, r, g, bb, a;
+    if (p < 1) {
+      evalState(prev, i, t, tmpA);
+      x = tmpA.x + (tmpB.x - tmpA.x) * p; y = tmpA.y + (tmpB.y - tmpA.y) * p;
+      r = tmpA.r + (tmpB.r - tmpA.r) * p; g = tmpA.g + (tmpB.g - tmpA.g) * p; bb = tmpA.b + (tmpB.b - tmpA.b) * p; a = tmpA.a + (tmpB.a - tmpA.a) * p;
+      const ang = hash(i * 6.6) * 6.283, m = amp * (0.3 + hash(i * 7.7));
+      x += Math.cos(ang) * m; y += Math.sin(ang) * m * 0.7;
+    } else { x = tmpB.x; y = tmpB.y; r = tmpB.r; g = tmpB.g; bb = tmpB.b; a = tmpB.a; }
+    if (a > 0.5) { x = cur.x + (x - cur.x) * breathe; y = cur.y + (y - cur.y) * breathe; }
+    x += Math.sin(t * 0.8 + i * 1.3) * 1.6; y += Math.cos(t * 0.9 + i * 0.7) * 1.6;
+    PX[i] = x; PY[i] = y; PR[i] = r; PG[i] = g; PB[i] = bb; PA[i] = a;
+  }
+  px.fill(0);
+  const gain = 0.42 + 0.22 * pulse(b, 4);
+  for (let i = 0; i < N; i++) {
+    const x = PX[i] | 0, y = PY[i] | 0;
+    if (x < 1 || y < 1 || x >= W - 2 || y >= H - 2) continue;
+    const a = PA[i] * gain * (0.45 + 0.55 * hash(i * 1.37));
+    const big = hash(i * 2.71) < 0.22;
+    const r = PR[i] * a, g = PG[i] * a, bl = PB[i] * a;
+    let o = (y * W + x) * 4;
+    px[o] += r; px[o + 1] += g; px[o + 2] += bl; px[o + 3] = 255;
+    if (big) { o += 4; px[o] += r * 0.7; px[o + 1] += g * 0.7; px[o + 2] += bl * 0.7; px[o + 3] = 255; o += W * 4 - 4; px[o] += r * 0.7; px[o + 1] += g * 0.7; px[o + 2] += bl * 0.7; px[o + 3] = 255; o += 4; px[o] += r * 0.5; px[o + 1] += g * 0.5; px[o + 2] += bl * 0.5; px[o + 3] = 255; }
+  }
+  pctx.putImageData(img, 0, 0);
+  ctx.globalCompositeOperation = "lighter";
+  ctx.drawImage(pcv, 0, 0);
+  // bloom
+  gctx.clearRect(0, 0, 480, 270);
+  gctx.filter = "blur(5px)"; gctx.drawImage(pcv, 0, 0, 480, 270); gctx.filter = "none";
+  ctx.globalAlpha = 0.55 + 0.45 * pulse(b, 4); ctx.drawImage(glowC, 0, 0, W, H);
+  // twinkling hero stars
+  for (let i = 0; i < N; i += 200) {
+    if (PA[i] < 0.5) continue;
+    const tw = 0.3 + 0.7 * Math.abs(Math.sin(t * 2 + i));
+    const s = (8 + 16 * hash(i * 4.4)) * (0.8 + 0.5 * pulse(b, 5));
+    ctx.globalAlpha = tw * 0.65; ctx.drawImage(star, PX[i] - s / 2, PY[i] - s / 2, s, s);
+  }
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+}
+
+// ---------- overlays: graphics that explain the meaning ----------
+function line(x1, y1, x2, y2, col, a, w = 1.5) { ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${a})`; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); }
+function label(txt, x, y, a, size = 24, col = "#fff", font = "Noto Serif CJK SC") { ctx.globalAlpha = a; ctx.fillStyle = col; ctx.font = `${size}px "${font}"`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(txt, x, y); ctx.globalAlpha = 1; }
+const OV = {
+  ring(st, lb, b) { const a = prog(lb, 0.5, 1); for (let k = 0; k < 3; k++) { const r = 250 + k * 60 + 10 * pulse(b); ctx.strokeStyle = `rgba(169,156,255,${0.35 * a / (k + 1)})`; ctx.setLineDash([4, 10]); ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(st.x, st.y, r * 1.5, r * 0.6, 0, b * 0.2 * (k % 2 ? -1 : 1), b * 0.2 * (k % 2 ? -1 : 1) + 6.283); ctx.stroke(); } ctx.setLineDash([]); },
+  logoRing(st, lb, b) {
+    const a = prog(lb, 0.6, 0.6), col = st.rgb;
+    ctx.save(); ctx.translate(st.x, st.y); ctx.scale(st.s || 1, st.s || 1);
+    for (let k = 0; k < 60; k++) { const ang = k / 60 * 6.283 + b * 0.12, r1 = 300, r2 = k % 5 ? 310 : 326; line(Math.cos(ang) * r1, Math.sin(ang) * r1, Math.cos(ang) * r2, Math.sin(ang) * r2, col, 0.5 * a); }
+    ctx.strokeStyle = `rgba(${col},${0.25 * a})`; ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.35 * a})`; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.arc(0, 0, 286 + 14 * pulse(b), 0, 6.283); ctx.stroke();
+    ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(0, 0, 340, -b * 0.4, -b * 0.4 + 1.2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(0, 0, 340, -b * 0.4 + 3.14, -b * 0.4 + 4.34); ctx.stroke();
+    ctx.restore();
+  },
+  attention(st, lb, b) {
+    const a = prog(lb, 1, 1), words = ["名", "字", "不", "是", "乱", "起", "的"];
+    const col = st.rgb, cx = st.x, cy = st.y + 150;
+    words.forEach((w, k) => label(w, cx + (k - 3) * 140, cy, a, 40, "#e9fff8"));
+    const focus = Math.floor(lb) % 7;
+    for (let j = 0; j < 7; j++) {
+      if (j === focus) continue;
+      const x1 = cx + (focus - 3) * 140, x2 = cx + (j - 3) * 140, h = 60 + Math.abs(x2 - x1) * 0.45;
+      const w = 0.25 + 0.75 * hash(j * 3 + focus * 11 + Math.floor(lb));
+      ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${a * w * (0.4 + 0.6 * pulse(lb, 3))})`; ctx.lineWidth = 1 + 4 * w;
+      ctx.beginPath(); ctx.moveTo(x1, cy - 45); ctx.quadraticCurveTo((x1 + x2) / 2, cy - 45 - h, x2, cy - 45); ctx.stroke();
+    }
+    label("ATTENTION", cx, cy - 330, a * 0.7, 20, `rgb(${col})`, "DejaVu Sans Mono");
+  },
+  dalle(st, lb) { const a = prog(lb, 1.5, 1); label("Dalí 达利", st.x - 250, st.y + 230, a, 30); label("WALL·E 瓦力", st.x + 250, st.y + 230, a, 30); label("+", st.x, st.y, a, 80, `rgb(${st.rgb})`); },
+  gemini(st, lb, b) {
+    const a = prog(lb, 0.8, 1), col = st.rgb;
+    SH.gemEdges.forEach(([i, j], k) => { const s1 = SH.gemStars[i], s2 = SH.gemStars[j]; const pr = clamp((lb - 0.8) * 3 - k * 0.15); if (pr > 0) line(st.x + s1[0], st.y + s1[1], st.x + s1[0] + (s2[0] - s1[0]) * pr, st.y + s1[1] + (s2[1] - s1[1]) * pr, col, 0.55 * a, 1.2); });
+    label("CASTOR · Brain", st.x - 120, st.y - 345, a, 20, "#cfe0ff", "DejaVu Sans Mono"); label("POLLUX · DeepMind", st.x + 60, st.y - 315, a, 20, "#e6d8ff", "DejaVu Sans Mono");
+  },
+  zoom(st, lb, b) { const a = prog(lb, 0.6, 0.6), col = st.rgb; ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.7 * a})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(st.x, st.y, 130 + 8 * pulse(b), 0, 6.283); ctx.stroke(); line(st.x + 92, st.y + 92, st.x + 200, st.y + 200, col, 0.7 * a, 6); label("NANO", st.x, st.y - 175, a, 26, "#fff", "DejaVu Sans Mono"); },
+  acronym(st, lb) { const L = [["L", "Large"], ["La", "Language"], ["M", "Model"], ["A", "Meta AI"]]; L.forEach(([k, w], j) => { const a = prog(lb, 1 + j * 0.5, 0.4); label(k, st.x - 330 + j * 220, st.y + 300, a, 46, `rgb(${st.rgb})`, "Noto Sans CJK SC"); label(w, st.x - 330 + j * 220, st.y + 345, a * 0.7, 20, "#fff", "Noto Serif"); }); },
+  depth(st, lb, b) { const col = st.rgb, a = prog(lb, 0.5, 0.6), x = st.x + 400; line(x, st.y - 380, x, st.y + 380, col, 0.4 * a); for (let k = 0; k < 9; k++) { const y = st.y - 380 + ((k * 95 - lb * 60) % 855 + 855) % 855; line(x - 12, y, x, y, col, 0.6 * a); label(`-${(Math.floor(lb * 600) + k * 1000)}m`, x + 60, y, 0.6 * a, 16, "#cfd8ff", "DejaVu Sans Mono"); } },
+  chain(st, lb, b) {
+    const P = SH.chainPts, steps = ["拆解", "推理", "验证", "反思", "答案"], col = st.rgb;
+    P.forEach((p, k) => { const on = lb >= 0.6 + k * 1.2; const a = prog(lb, 0.6 + k * 1.2, 0.4); if (k > 0) { const q = P[k - 1], pr = prog(lb, 0.6 + (k - 1) * 1.2, 1.2); line(st.x + q[0], st.y + q[1], st.x + q[0] + (p[0] - q[0]) * pr, st.y + q[1] + (p[1] - q[1]) * pr, col, 0.9, 3); }
+      if (on) { ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${a})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(st.x + p[0], st.y + p[1], 40 + 10 * Math.exp(-(lb - 0.6 - k * 1.2) * 3), 0, 6.283); ctx.stroke(); }
+      label(steps[k], st.x + p[0], st.y + p[1] + 75, a, 28, k === 4 ? `rgb(${col})` : "#fff"); });
+  },
+  launch(st, lb, b) {
+    const a = prog(lb, 0.8, 0.6), col = st.rgb, x0 = st.x - 300 + 60, y0 = st.y + 150 - 60, x1 = st.x + 140 - 120, y1 = st.y - 180;
+    const pr = prog(lb, 1, 4);
+    ctx.setLineDash([6, 12]); ctx.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${0.8 * a})`; ctx.lineWidth = 2.5; ctx.beginPath();
+    for (let k = 0; k <= 40 * pr; k++) { const u = k / 40, x = x0 + (x1 - x0) * u, y = y0 + (y1 - y0) * u - Math.sin(u * Math.PI) * 160; k ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke(); ctx.setLineDash([]);
+    label("THE DARK SIDE", st.x + 140 - 130, st.y + 300, a * 0.8, 18, "#8a93b8", "DejaVu Sans Mono"); label("MOONSHOT 登月", st.x + 140 + 130, st.y + 300, a, 18, `rgb(${col})`, "DejaVu Sans Mono");
+  },
+  janus(st, lb) { const a = prog(lb, 1.2, 0.8); label("👁  看懂图 · understand", st.x - 300, st.y + 320, a, 26); label("🎨  画出图 · generate", st.x + 300, st.y + 320, a, 26); },
+  network(st, lb, b) {
+    const a = prog(lb, 1, 1), col = st.rgb, names = ["GPT", "Claude", "Gemini", "Llama", "Grok", "DeepSeek", "Qwen", "Kimi"];
+    const pos = names.map((_, k) => [st.x - 750 + 190 + (k % 4) * 373, st.y - 320 + 150 + Math.floor(k / 4) * 330]);
+    pos.forEach((p, k) => pos.forEach((q, j) => { if (j > k && (j - k === 1 || j - k === 4 || j - k === 5)) line(p[0], p[1], q[0], q[1], col, 0.18 * a * (0.5 + pulse(b + k * 0.25, 4))); }));
+    names.forEach((n, k) => label(n, pos[k][0], pos[k][1] + 130, prog(lb, 0.5 + k * 0.25, 0.4), 28, "#fff", "Noto Sans CJK SC"));
+  }
+};
+
+// ---------- text ----------
+const $ = id => document.getElementById(id);
+const els = { title: $("title"), tTag: $("tTag"), tName: $("tName"), tEq: $("tEq"), tDesc: $("tDesc"), comp: $("comp"), cTag: $("cTag"), cName: $("cName"), cDesc: $("cDesc"), chips: $("chips"), center: $("center"), sub: $("sub"), subZh: $("subZh"), subEn: $("subEn") };
+const GLYPHS = "01ABCDEFGHJKLMNPQRSTUVWXYZ#$%&*+<>/";
+function scramble(text, p, seed) { if (p >= 1) return text; let o = ""; for (let i = 0; i < text.length; i++) { const ch = text[i]; o += ch === " " || i / text.length < p ? ch : GLYPHS[Math.floor(hash(seed + i * 7.3) * GLYPHS.length)]; } return o; }
+function fade(el, b, start, endB, dy = 16) {
+  const a = Math.min(prog(b, start, 0.6), 1 - prog(b, endB - 0.35, 0.35));
+  el.style.opacity = a; el.style.transform = `translateY(${dy * (1 - easeOut(prog(b, start, 0.6)))}px)`; el.style.filter = a < 1 ? `blur(${(1 - a) * 6}px)` : "none";
+}
+function fitW(el, max, base) { el.style.fontSize = base + "px"; let fs = base; const r = document.createRange(); r.selectNodeContents(el); while (r.getBoundingClientRect().width > max && fs > 16) { fs -= 2; el.style.fontSize = fs + "px"; } }
+let lastKey = "";
+function renderText(b, k) {
+  const st = STATES[k];
+  const next = STATES[k + 1];
+  // when does the current text block end?
+  let titleEnd = TOTAL_BEATS, subEnd = TOTAL_BEATS;
+  for (let j = k + 1; j < STATES.length; j++) { const s = STATES[j]; if (titleEnd === TOTAL_BEATS && (s.title || s.layout !== "model")) titleEnd = s.B; if (subEnd === TOTAL_BEATS && s.sub) { subEnd = s.B; break; } }
+  if (b > TOTAL_BEATS - 2) subEnd = TOTAL_BEATS;
+  const stage = $("stage"); stage.style.setProperty("--c", st.c);
+  const key = k + ":" + (st.tTitle || []).join() + (st.tSub || []).join();
+  if (key !== lastKey) {
+    lastKey = key;
+    if (st.tSub) { els.subZh.innerHTML = st.tSub[0]; els.subEn.textContent = st.tSub[1]; fitW(els.subZh, 1700, 40); }
+    if (st.layout === "company" && st.ci != null) {
+      const co = C[st.ci]; els.cTag.textContent = co.tag; els.cName.textContent = co.name; els.cDesc.textContent = co.desc;
+      els.chips.innerHTML = co.chips.map(c => `<span class="chip">${c}</span>`).join("");
+    }
+    if (st.tTitle) { els.tTag.textContent = C[st.ci].key + " · " + C[st.ci].name; els.tEq.textContent = st.tTitle[1]; els.tDesc.textContent = st.tTitle[2]; fitW(els.tEq, 640, 54); fitW(els.tDesc, 640, 26); }
+    els.center.textContent = st.center || "";
+  }
+  els.sub.style.display = st.tSub ? "block" : "none";
+  if (st.tSub) { fade(els.subZh, b, st.tSubB + 0.5, subEnd); fade(els.subEn, b, st.tSubB + 1, subEnd); els.sub.querySelector("#subLine").style.opacity = els.subZh.style.opacity; }
+  const isComp = st.layout === "company" && st.ci != null;
+  els.comp.style.display = isComp ? "block" : "none";
+  if (isComp) { fade(els.cTag, b, st.B + 0.3, st.B + 8); fade(els.cName, b, st.B + 0.5, st.B + 8, 30); fade(els.cDesc, b, st.B + 1, st.B + 4); els.chips.querySelectorAll(".chip").forEach((c, j) => fade(c, b, st.B + 4 + j, st.B + 8, 20)); }
+  els.title.style.display = st.tTitle ? "block" : "none";
+  if (st.tTitle) {
+    const tb = st.tTitleB;
+    const pn = prog(b, tb, 1);
+    els.tName.textContent = scramble(st.tTitle[0], pn * 1.15, Math.floor(b * 14));
+    if (pn >= 1) fitW(els.tName, 640, 128); else els.tName.style.fontSize = (els.tName.dataset.fs || 128) + "px";
+    if (pn >= 1) els.tName.dataset.fs = parseFloat(els.tName.style.fontSize);
+    fade(els.tName, b, tb, titleEnd, 0); fade(els.tTag, b, tb, titleEnd); fade(els.tEq, b, tb + 1, titleEnd, 24); fade(els.tDesc, b, tb + 1.5, titleEnd);
+  }
+  els.center.style.display = st.center ? "block" : "none";
+  if (st.center) fade(els.center, b, st.B + 0.5, next ? next.B : TOTAL_BEATS, 20);
+}
+
+// ---------- grain ----------
+const grainCtx = $("grain").getContext("2d"), grainImg = grainCtx.createImageData(480, 270);
+function drawGrain(f) { const d = grainImg.data; for (let i = 0; i < d.length; i += 4) { const v = hash(i * 0.37 + f * 13.1) * 255; d[i] = d[i + 1] = d[i + 2] = v; d[i + 3] = 255; } grainCtx.putImageData(grainImg, 0, 0); }
+
+// ---------- frame ----------
+function renderFrame(t) {
+  t = clamp(t, 0, DURATION - 1e-3);
+  const b = t / BEAT, k = stateAt(b), st = STATES[k], lb = b - st.B;
+  const hit = st.kind === "company" ? 1 : st.kind === "model" ? 0.45 : st.kind === "state" ? 0.2 : 0;
+  const hitE = lb < 0.6 ? Math.exp(-lb * 9) * hit : 0;
+  const shake = hitE * 14;
+  ctx.setTransform(1, 0, 0, 1, (hash(Math.floor(b * 24)) - 0.5) * shake, (hash(Math.floor(b * 24) + 3) - 0.5) * shake);
+  ctx.globalAlpha = 1; ctx.drawImage(bgC, 0, 0);
+  // nebula tint follows the scene color
+  const [r, g, bl] = st.rgb, neb = ctx.createRadialGradient(st.x, st.y, 0, st.x, st.y, 900);
+  neb.addColorStop(0, `rgba(${r},${g},${bl},${0.10 + 0.06 * pulse(b, 4)})`); neb.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = neb; ctx.fillRect(-50, -50, W + 100, H + 100);
+  drawParticles(b, t, k);
+  if (st.ov && OV[st.ov]) { ctx.globalCompositeOperation = "lighter"; OV[st.ov](st, lb, b); ctx.globalCompositeOperation = "source-over"; }
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  renderText(b, k);
+  $("flash").style.opacity = (hitE * 0.55).toFixed(3);
+  $("text").style.transform = shake > 0.5 ? `translate(${(hash(Math.floor(b * 24) + 9) - 0.5) * shake}px,0)` : "none";
+  $("hudR").textContent = st.ci != null ? `${String(st.ci + 1).padStart(2, "0")} / 08 · ${C[st.ci].key}` : "";
+  $("hudB").textContent = `♪ 126 BPM · BAR ${String(Math.floor(b / 4) + 1).padStart(3, "0")} · ${"●".repeat((Math.floor(b) % 4) + 1)}${"○".repeat(3 - (Math.floor(b) % 4))}`;
+  $("progress").style.width = (t / DURATION * 100).toFixed(2) + "%";
+  drawGrain(Math.floor(t * 30));
+}
+window.renderFrame = renderFrame;
+
+// ---------- boot + preview player ----------
+const params = new URLSearchParams(location.search);
+function fitStage() { const s = params.has("render") ? 1 : Math.min(innerWidth / 1920, (innerHeight - 64) / 1080); $("stage").style.transform = `scale(${s})`; }
+addEventListener("resize", fitStage);
+(async () => {
+  await document.fonts.load('700 100px "Noto Serif CJK SC"'); await document.fonts.load('100px "Noto Color Emoji"'); await document.fonts.ready;
+  buildBg(); await buildShapes();
+  if (params.has("render")) document.body.classList.add("render");
+  fitStage(); renderFrame(parseFloat(params.get("t") || "0")); window.READY = true;
+})();
+let playing = false, t0 = 0, startAt = 0, audio = null;
+const playBtn = $("play"), seek = $("seek"), timeEl = $("time"), offsetEl = $("offset");
+function now() { return audio ? audio.currentTime - parseFloat(offsetEl.value || 0) : (performance.now() - t0) / 1000 + startAt; }
+function tick() { if (!playing) return; let t = now(); if (t >= DURATION) { playing = false; playBtn.textContent = "▶ 播放"; if (audio) audio.pause(); t = DURATION; } renderFrame(t); seek.value = t / DURATION * 1000; timeEl.textContent = t.toFixed(2) + "s"; requestAnimationFrame(tick); }
+playBtn.onclick = () => { playing = !playing; playBtn.textContent = playing ? "❚❚ 暂停" : "▶ 播放"; if (playing) { startAt = seek.value / 1000 * DURATION; if (startAt >= DURATION - 0.05) startAt = 0; t0 = performance.now(); if (audio) { audio.currentTime = startAt + parseFloat(offsetEl.value || 0); audio.play(); } tick(); } else if (audio) audio.pause(); };
+seek.oninput = () => { const t = seek.value / 1000 * DURATION; renderFrame(t); timeEl.textContent = t.toFixed(2) + "s"; };
+$("music").onchange = e => { const f = e.target.files[0]; if (f) audio = new Audio(URL.createObjectURL(f)); };
+</script>
+</body>
+</html>
