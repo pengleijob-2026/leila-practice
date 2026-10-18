@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>大模型的名字，没一个是乱起的 · 126 BPM 卡点</title>
+<style>
+  :root { --c: #10a37f; --c2: #6ee7c8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: #000; overflow: hidden; }
+  body { font-family: "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif; color: #fff; }
+  #wrap { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+  #stage { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: #03040a; transform-origin: center center; }
+  #bg { position: absolute; inset: 0; }
+  .layer { position: absolute; inset: 0; }
+  .mono { font-family: "JetBrains Mono", "DejaVu Sans Mono", "Menlo", monospace; letter-spacing: 0.08em; }
+
+  #scan { pointer-events: none; background: repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 2px, transparent 2px 5px); mix-blend-mode: overlay; }
+  #vignette { pointer-events: none; background: radial-gradient(ellipse at 50% 45%, transparent 45%, rgba(0,0,0,0.75) 100%); }
+  #flash { pointer-events: none; background: #fff; opacity: 0; }
+
+  .hud-corner { position: absolute; width: 70px; height: 70px; border-color: var(--c); border-style: solid; opacity: 0.8; }
+  .hud-corner.tl { left: 40px; top: 170px; border-width: 4px 0 0 4px; }
+  .hud-corner.tr { right: 40px; top: 170px; border-width: 4px 4px 0 0; }
+  .hud-corner.bl { left: 40px; bottom: 420px; border-width: 0 0 4px 4px; }
+  .hud-corner.br { right: 40px; bottom: 420px; border-width: 0 4px 4px 0; }
+  #bpm { position: absolute; left: 60px; bottom: 380px; font-size: 22px; color: rgba(255,255,255,0.45); }
+
+  .scene { position: absolute; inset: 0; display: none; }
+
+  /* intro */
+  .big-line { position: absolute; left: 0; right: 0; text-align: center; font-weight: 700; white-space: nowrap; }
+  .intro-l1 { top: 640px; font-size: 118px; }
+  .intro-l2 { top: 810px; font-size: 118px; color: var(--c2); text-shadow: 0 0 40px var(--c); }
+  .rapid { position: absolute; left: 0; right: 0; top: 560px; text-align: center; }
+  .rapid .logo { width: 360px; height: 360px; margin: 0 auto; }
+  .rapid .name { margin-top: 50px; font-size: 92px; font-weight: 700; }
+  .title-words { position: absolute; left: 0; right: 0; top: 520px; text-align: center; }
+  .title-words .kicker { font-size: 44px; color: rgba(255,255,255,0.7); margin-bottom: 40px; }
+  .title-words .w { display: inline-block; font-size: 120px; font-weight: 700; margin: 0 6px; }
+  .title-words .row { margin: 10px 0; }
+  .title-words .sub { margin-top: 70px; font-size: 40px; color: rgba(255,255,255,0.75); }
+
+  /* company scenes */
+  .hud-top { position: absolute; left: 70px; right: 140px; top: 205px; display: flex; align-items: center; gap: 22px; font-size: 30px; }
+  .hud-top .idx { color: var(--c2); font-weight: 700; }
+  .hud-top .bar { flex: 1; display: flex; gap: 8px; }
+  .hud-top .bar i { flex: 1; height: 6px; background: rgba(255,255,255,0.15); }
+  .hud-top .bar i.on { background: var(--c); box-shadow: 0 0 12px var(--c); }
+  .logo-wrap { position: absolute; left: 50%; top: 290px; width: 270px; height: 270px; margin-left: -135px; }
+  .logo-wrap svg.ring { position: absolute; inset: -34px; width: 338px; height: 338px; overflow: visible; }
+  .logo-wrap .disc { position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle, rgba(255,255,255,0.10), rgba(255,255,255,0.02) 65%, transparent 70%); }
+  .logo-wrap .logo { position: absolute; inset: 45px; }
+  .logo svg { width: 100%; height: 100%; display: block; }
+  .model { position: absolute; left: 0; right: 0; top: 610px; text-align: center; font-weight: 700; font-size: 136px; line-height: 1; letter-spacing: 0.02em; white-space: nowrap; }
+  .by { position: absolute; left: 0; right: 0; top: 768px; text-align: center; font-size: 38px; color: rgba(255,255,255,0.78); white-space: nowrap; }
+  .by b { color: var(--c2); font-weight: 700; }
+  .row-card { position: absolute; left: 70px; right: 140px; height: 186px; padding: 22px 28px 0 40px; background: linear-gradient(90deg, rgba(22,26,40,0.92), rgba(10,12,22,0.86)); border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; overflow: hidden; }
+  .row-card::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 10px; background: var(--c); box-shadow: 0 0 24px var(--c); }
+  .row-card .lab { font-size: 26px; color: var(--c2); display: flex; gap: 16px; align-items: center; }
+  .row-card .lab span.en { color: rgba(255,255,255,0.4); }
+  .row-card .main { margin-top: 8px; line-height: 1.3; font-size: 50px; font-weight: 700; white-space: nowrap; }
+  .row-card .sub { margin-top: 6px; line-height: 1.35; font-size: 29px; color: rgba(255,255,255,0.66); white-space: nowrap; }
+  .r1 { top: 836px; } .r2 { top: 1038px; } .r3 { top: 1240px; }
+  .chips { margin-top: 16px; display: flex; gap: 16px; }
+  .chip { padding: 12px 26px; border-radius: 999px; font-size: 40px; font-weight: 700; background: var(--c); color: #04060c; box-shadow: 0 0 26px var(--c); white-space: nowrap; }
+
+  /* outro */
+  .grid { position: absolute; left: 70px; right: 140px; top: 220px; display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .tile { height: 212px; border-radius: 22px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); display: flex; align-items: center; gap: 24px; padding: 0 28px; position: relative; overflow: hidden; }
+  .tile::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: var(--tc); box-shadow: 0 0 20px var(--tc); }
+  .tile .logo { width: 88px; height: 88px; flex: none; }
+  .tile .t1 { font-size: 42px; font-weight: 700; white-space: nowrap; }
+  .tile .t2 { font-size: 26px; color: rgba(255,255,255,0.6); margin-top: 4px; white-space: nowrap; }
+  .tile .t3 { font-size: 34px; color: var(--tc); font-weight: 700; margin-top: 8px; white-space: nowrap; }
+  .outro-l { position: absolute; left: 0; right: 0; text-align: center; font-weight: 700; white-space: nowrap; }
+  .outro-l1 { top: 1205px; font-size: 62px; }
+  .outro-l2 { top: 1305px; font-size: 50px; color: var(--c2); }
+
+  /* preview controls (hidden in render mode) */
+  #ui { position: fixed; left: 12px; bottom: 12px; z-index: 10; display: flex; gap: 8px; align-items: center; background: rgba(20,22,30,0.85); padding: 10px 12px; border-radius: 10px; font: 13px/1.4 system-ui, sans-serif; color: #ddd; flex-wrap: wrap; max-width: calc(100vw - 24px); }
+  #ui button, #ui label.btn { background: #2c6bff; color: #fff; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+  #ui input[type=number] { width: 70px; }
+  #ui input[type=range] { width: 220px; }
+  body.render #ui { display: none; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="bg" width="1080" height="1920"></canvas>
+    <div class="layer" id="scenes"></div>
+    <div class="layer" id="hud">
+      <div class="hud-corner tl"></div><div class="hud-corner tr"></div>
+      <div class="hud-corner bl"></div><div class="hud-corner br"></div>
+      <div id="bpm" class="mono">♪ 126 BPM · BEAT 000</div>
+    </div>
+    <div class="layer" id="scan"></div>
+    <div class="layer" id="vignette"></div>
+    <div class="layer" id="flash"></div>
+  </div>
+</div>
+
+<div id="ui">
+  <button id="play">▶ 播放</button>
+  <input id="seek" type="range" min="0" max="1000" value="0" />
+  <span id="time">0.00s</span>
+  <label class="btn">选择配乐 (We Never)<input id="music" type="file" accept="audio/*" hidden /></label>
+  <span>配乐起点(秒，需落在重拍)</span><input id="offset" type="number" step="0.01" value="0" />
+</div>
+
+<script src="logos.js"></script>
+<script>
+// ---------- beat clock ----------
+const BPM = 126;
+const BEAT = 60 / BPM;            // 0.476 s
+const SCENE_BEATS = 16;           // 4 bars per scene
+const COMPANIES = [
+  {
+    key: "openai", logo: "openai", logoColor: "#ffffff", c: "#10a37f", c2: "#6ee7c8",
+    model: "GPT", company: "OpenAI", country: "美国 · 旧金山",
+    origin: ["Generative Pre-trained Transformer", "生成式 · 预训练 · Transformer —— 名字就是技术路线"],
+    belief: ["让 AGI 造福全人类", "Ensure AGI benefits all of humanity"],
+    chips: ["全能通用", "多模态", "深度推理"],
+    tile: "全能通用"
+  },
+  {
+    key: "claude", logo: "claude-color", c: "#d97757", c2: "#ffb59a",
+    model: "Claude", company: "Anthropic", country: "美国 · 旧金山",
+    origin: ["致敬「信息论之父」香农", "Claude Shannon · Anthropic 意为「与人类有关的」"],
+    belief: ["安全，是能力的前提", "有益 · 诚实 · 无害 —— 宪法式 AI"],
+    chips: ["写代码", "长文本", "智能体"],
+    tile: "代码 · 安全"
+  },
+  {
+    key: "gemini", logo: "gemini-color", c: "#3186ff", c2: "#9cc4ff",
+    model: "Gemini", company: "Google DeepMind", country: "美国 / 英国",
+    origin: ["双子座 = 两支团队合体", "Google Brain × DeepMind 合并后的第一个孩子"],
+    belief: ["先解决智能，再解决一切", "Solve intelligence, then everything else"],
+    chips: ["原生多模态", "超长上下文", "谷歌生态"],
+    tile: "原生多模态"
+  },
+  {
+    key: "llama", logo: "meta-color", c: "#0668e1", c2: "#7fb6ff",
+    model: "Llama", company: "Meta", country: "美国 · 门洛帕克",
+    origin: ["LLaMA = Large Language Model Meta AI", "缩写恰好拼出「美洲驼」🦙"],
+    belief: ["开源，让每个人都能用上", "Open Source AI Is the Path Forward"],
+    chips: ["开源生态", "本地部署", "二次开发"],
+    tile: "开源生态"
+  },
+  {
+    key: "grok", logo: "grok", logoColor: "#ffffff", c: "#8b5cf6", c2: "#cbb6ff",
+    model: "Grok", company: "xAI", country: "美国 · 马斯克",
+    origin: ["科幻造词：彻底领会", "出自海因莱因 1961 年小说《异乡异客》"],
+    belief: ["理解宇宙的真实本质", "Understand the true nature of the universe"],
+    chips: ["实时 X 数据", "敢说敢聊", "推理"],
+    tile: "实时 · 敢说"
+  },
+  {
+    key: "deepseek", logo: "deepseek-color", c: "#4d6bfe", c2: "#a9b8ff",
+    model: "DeepSeek", company: "深度求索", country: "中国 · 杭州",
+    origin: ["Deep + Seek = 深度求索", "名字直译，向未知处深挖"],
+    belief: ["以好奇心解开 AGI 之谜", "务实 · 开源 · 长期主义"],
+    chips: ["推理 R1", "极致性价比", "开源"],
+    tile: "推理 · 性价比"
+  },
+  {
+    key: "qwen", logo: "qwen-color", c: "#6f5cf1", c2: "#c2b8ff",
+    model: "Qwen", company: "阿里 · 通义千问", country: "中国 · 杭州",
+    origin: ["Qwen = 「千问」的拼音", "千万个问题，有问必答 · 通义 = 通情达义"],
+    belief: ["开源开放，全尺寸全模态", "从手机小模型到超大模型，一家全包"],
+    chips: ["中文理解", "开源全家桶", "多语言"],
+    tile: "中文 · 开源"
+  },
+  {
+    key: "kimi", logo: "kimi-color", c: "#1783ff", c2: "#8cc3ff",
+    model: "Kimi", company: "月之暗面 Moonshot", country: "中国 · 北京",
+    origin: ["月之暗面 ← 1973 年的一张唱片", "Pink Floyd《The Dark Side of the Moon》"],
+    belief: ["Moonshot：做登月级的难事", "挑战最难的问题，长期主义"],
+    chips: ["超长上下文", "长文阅读", "智能体"],
+    tile: "超长上下文"
+  }
+];
+const INTRO = { c: "#2de2e6", c2: "#9ff8ff" };
+const INTRO_BEATS = 16, OUTRO_BEATS = 16;
+const TOTAL_BEATS = INTRO_BEATS + COMPANIES.length * SCENE_BEATS + OUTRO_BEATS;
+const DURATION = TOTAL_BEATS * BEAT;
+window.VIDEO_META = { BPM, BEAT, DURATION, TOTAL_BEATS, INTRO_BEATS, SCENE_BEATS, companies: COMPANIES.length };
+
+// ---------- helpers ----------
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const prog = (b, start, len) => clamp((b - start) / len);
+const easeOut = x => 1 - Math.pow(1 - x, 3);
+const easeBack = x => { const c1 = 2.2, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const pulse = (b, k = 6) => { const f = b - Math.floor(b); return Math.exp(-f * k); };
+function hash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+const GLYPHS = "01ABCDEFGHJKLMNPQRSTUVWXYZ#$%&*+<>/\\";
+function scramble(text, p, seed) {
+  if (p >= 1) return text;
+  let out = "";
+  const n = text.length;
+  for (let i = 0; i < n; i++) {
+    const ch = text[i];
+    if (ch === " ") { out += " "; continue; }
+    if (i / n < p) out += ch;
+    else out += GLYPHS[Math.floor(hash(seed + i * 7.3) * GLYPHS.length)];
+  }
+  return out;
+}
+function logoHTML(name, color) {
+  const svg = (window.LOGOS[name] || "").replace(/_R_0_/g, "_" + Math.random().toString(36).slice(2, 7));
+  return `<div class="logo" style="color:${color || "#fff"}">${svg}</div>`;
+}
+function setVars(el, c, c2) { el.style.setProperty("--c", c); el.style.setProperty("--c2", c2); }
+
+// ---------- build DOM ----------
+const stage = document.getElementById("stage");
+const scenesEl = document.getElementById("scenes");
+
+const intro = document.createElement("div");
+intro.className = "scene";
+intro.innerHTML = `
+  <div class="big-line intro-l1">大模型的名字</div>
+  <div class="big-line intro-l2">没一个是乱起的</div>
+  <div class="rapid">${COMPANIES.map(c => `<div class="rapid-item" style="display:none">
+      ${logoHTML(c.logo, c.logoColor)}<div class="name" style="color:${c.c2}">${c.model}</div></div>`).join("")}</div>
+  <div class="title-words">
+    <div class="kicker mono">8 家 AI 公司 · 8 个名字</div>
+    <div class="row"><span class="w">名字</span><span class="w">由来</span></div>
+    <div class="row"><span class="w">信念</span><span class="w">擅长</span></div>
+    <div class="sub">一分钟，秒懂</div>
+  </div>`;
+scenesEl.appendChild(intro);
+
+const companyScenes = COMPANIES.map((c, i) => {
+  const el = document.createElement("div");
+  el.className = "scene";
+  setVars(el, c.c, c.c2);
+  el.innerHTML = `
+    <div class="hud-top mono"><span class="idx">${String(i + 1).padStart(2, "0")} / 08</span>
+      <span class="bar">${COMPANIES.map((_, j) => `<i class="${j <= i ? "on" : ""}"></i>`).join("")}</span>
+      <span>${c.key.toUpperCase()}</span></div>
+    <div class="logo-wrap">
+      <svg class="ring" viewBox="0 0 410 410">
+        <circle cx="205" cy="205" r="196" fill="none" stroke="${c.c}" stroke-width="3" stroke-dasharray="14 10" opacity="0.8"/>
+        <circle class="ring2" cx="205" cy="205" r="178" fill="none" stroke="${c.c2}" stroke-width="2" stroke-dasharray="120 40 6 40" opacity="0.6"/>
+      </svg>
+      <div class="disc"></div>
+      ${logoHTML(c.logo, c.logoColor)}
+    </div>
+    <div class="model" style="text-shadow:0 0 50px ${c.c}">${c.model}</div>
+    <div class="by">by <b>${c.company}</b> · ${c.country}</div>
+    <div class="row-card r1"><div class="lab mono">名字由来 <span class="en">// ORIGIN</span></div>
+      <div class="main">${c.origin[0]}</div><div class="sub">${c.origin[1]}</div></div>
+    <div class="row-card r2"><div class="lab mono">核心信念 <span class="en">// BELIEF</span></div>
+      <div class="main">${c.belief[0]}</div><div class="sub">${c.belief[1]}</div></div>
+    <div class="row-card r3"><div class="lab mono">最擅长 <span class="en">// STRENGTH</span></div>
+      <div class="chips">${c.chips.map(t => `<span class="chip">${t}</span>`).join("")}</div></div>`;
+  scenesEl.appendChild(el);
+  return el;
+});
+
+const outro = document.createElement("div");
+outro.className = "scene";
+outro.innerHTML = `
+  <div class="grid">${COMPANIES.map(c => `<div class="tile" style="--tc:${c.c2}">
+      ${logoHTML(c.logo, c.logoColor)}
+      <div><div class="t1">${c.model}</div><div class="t2">${c.company}</div><div class="t3">${c.tile}</div></div></div>`).join("")}</div>
+  <div class="outro-l outro-l1">名字背后，是每家的信念</div>
+  <div class="outro-l outro-l2">你最常用哪一个？评论区见</div>`;
+scenesEl.appendChild(outro);
+
+// auto-shrink long single-line text so nothing overflows its card
+function contentWidth(el) { const r = document.createRange(); r.selectNodeContents(el); return r.getBoundingClientRect().width; }
+function fitText(el, maxW) {
+  let fs = parseFloat(getComputedStyle(el).fontSize);
+  while (contentWidth(el) > maxW && fs > 18) { fs -= 1; el.style.fontSize = fs + "px"; }
+}
+function fitAll() {
+  companyScenes.forEach(s => {
+    s.style.display = "block";
+    s.querySelectorAll(".row-card .main, .row-card .sub").forEach(e => fitText(e, 1080 - 210 - 68));
+    const chips = s.querySelector(".chips");
+    let fs = 40;
+    while (contentWidth(chips) > 1080 - 210 - 68 && fs > 22) { fs -= 1; chips.querySelectorAll(".chip").forEach(c => c.style.fontSize = fs + "px"); }
+    fitText(s.querySelector(".model"), 860);
+    fitText(s.querySelector(".by"), 860);
+    s.style.display = "none";
+  });
+  outro.style.display = "block";
+  outro.querySelectorAll(".tile .t1, .tile .t2, .tile .t3").forEach(e => fitText(e, 250));
+  outro.style.display = "none";
+}
+
+// ---------- background ----------
+const ctx = document.getElementById("bg").getContext("2d");
+const STARS = Array.from({ length: 160 }, (_, i) => ({ x: hash(i) * 2 - 1, y: hash(i + 99) * 2 - 1, z: hash(i + 7) }));
+function hexToRgb(h) { const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function drawBg(b, color, energy) {
+  const W = 1080, H = 1920;
+  const [r, g, bl] = hexToRgb(color);
+  ctx.fillStyle = "#03040a"; ctx.fillRect(0, 0, W, H);
+  const p = pulse(b);
+  const glow = ctx.createRadialGradient(W / 2, 430, 50, W / 2, 430, 1100);
+  glow.addColorStop(0, `rgba(${r},${g},${bl},${0.30 + 0.25 * p * energy})`);
+  glow.addColorStop(0.5, `rgba(${r},${g},${bl},0.08)`);
+  glow.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+
+  // perspective floor grid scrolling one cell per beat
+  const horizon = 1180, vpX = W / 2;
+  ctx.save();
+  ctx.strokeStyle = `rgba(${r},${g},${bl},${0.22 + 0.3 * p * energy})`;
+  ctx.lineWidth = 2;
+  for (let i = -14; i <= 14; i++) {
+    ctx.beginPath(); ctx.moveTo(vpX, horizon); ctx.lineTo(vpX + i * 220, H); ctx.stroke();
+  }
+  const scroll = b - Math.floor(b);
+  for (let k = 0; k < 14; k++) {
+    const z = (k + 1 - scroll);
+    const y = horizon + (H - horizon) * (1 / (14 - z * 0.92 + 0.0001)) * 1.0;
+    if (y < horizon || y > H) continue;
+    ctx.globalAlpha = clamp((y - horizon) / 300);
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+  }
+  ctx.restore();
+  // ceiling grid (mirrored, faint)
+  ctx.save();
+  ctx.strokeStyle = `rgba(${r},${g},${bl},0.07)`;
+  for (let i = -10; i <= 10; i++) { ctx.beginPath(); ctx.moveTo(vpX, 700); ctx.lineTo(vpX + i * 260, 0); ctx.stroke(); }
+  ctx.restore();
+
+  // warp stars, speed kicks on each beat
+  const t = b * BEAT;
+  ctx.save();
+  for (const s of STARS) {
+    const z = ((s.z - t * 0.18 - 0.05 * Math.floor(b)) % 1 + 1) % 1;
+    const k = 1 / (z * 3 + 0.25);
+    const x = W / 2 + s.x * 300 * k, y = 760 + s.y * 420 * k;
+    if (x < 0 || x > W || y < 0 || y > H) continue;
+    const len = (6 + 40 * p * energy) * (1 - z);
+    const dx = (x - W / 2) / 600 * len, dy = (y - 760) / 600 * len;
+    ctx.strokeStyle = `rgba(255,255,255,${0.15 + 0.6 * (1 - z)})`;
+    ctx.lineWidth = 1.5 + 2 * (1 - z);
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + dx, y + dy); ctx.stroke();
+  }
+  ctx.restore();
+
+  // expanding beat ring
+  ctx.save();
+  const f = b - Math.floor(b);
+  ctx.strokeStyle = `rgba(${r},${g},${bl},${0.5 * (1 - f) * energy})`;
+  ctx.lineWidth = 6 * (1 - f) + 1;
+  ctx.beginPath(); ctx.arc(W / 2, 425, 170 + f * 520, 0, Math.PI * 2); ctx.stroke();
+  ctx.restore();
+}
+
+// ---------- per-frame render ----------
+const flash = document.getElementById("flash");
+const bpmEl = document.getElementById("bpm");
+const hudEl = document.getElementById("hud");
+function show(el, on) { el.style.display = on ? "block" : "none"; }
+function tf(el, s) { el.style.transform = s; }
+function glitchFilter(amount, c) {
+  if (amount <= 0.01) return "none";
+  const d = (6 + 18 * amount).toFixed(1);
+  return `drop-shadow(${d}px 0 0 rgba(255,0,80,${0.8 * amount})) drop-shadow(-${d}px 0 0 rgba(0,240,255,${0.8 * amount}))`;
+}
+function enter(el, b, start, len = 0.5, dx = 0, dy = 60) {
+  const p = prog(b, start, len);
+  const e = easeOut(p);
+  el.style.opacity = p;
+  tf(el, `translate(${dx * (1 - e)}px, ${dy * (1 - e)}px)`);
+}
+
+function renderIntro(lb) {
+  setVars(stage, INTRO.c, INTRO.c2);
+  const l1 = intro.querySelector(".intro-l1"), l2 = intro.querySelector(".intro-l2");
+  const showLines = lb < 4;
+  show(l1, showLines); show(l2, showLines);
+  if (showLines) {
+    const s1 = easeBack(prog(lb, 0, 0.5)), s2 = easeBack(prog(lb, 2, 0.5));
+    l1.style.opacity = prog(lb, 0, 0.15); tf(l1, `scale(${2.2 - 1.2 * s1})`);
+    l2.style.opacity = prog(lb, 2, 0.15); tf(l2, `scale(${2.2 - 1.2 * s2})`);
+    l2.style.filter = glitchFilter(1 - prog(lb, 2, 0.5));
+    l1.style.filter = glitchFilter(1 - prog(lb, 0, 0.5));
+  }
+  // logos rapid-fire on every 8th note (beats 4..8)
+  const items = intro.querySelectorAll(".rapid-item");
+  items.forEach((it, i) => {
+    const s = 4 + i * 0.5;
+    const on = lb >= s && lb < s + 0.5;
+    show(it, on);
+    if (on) {
+      const p = prog(lb, s, 0.5);
+      tf(it, `scale(${1.25 - 0.25 * easeOut(p)})`);
+      it.style.filter = glitchFilter(1 - p * 2);
+      setVars(stage, COMPANIES[i].c, COMPANIES[i].c2);
+    }
+  });
+  const tw = intro.querySelector(".title-words");
+  show(tw, lb >= 8);
+  if (lb >= 8) {
+    tw.querySelector(".kicker").style.opacity = prog(lb, 8, 0.3);
+    tw.querySelectorAll(".w").forEach((w, i) => {
+      const s = 8 + i;
+      const p = prog(lb, s, 0.4);
+      w.style.opacity = p > 0 ? 1 : 0;
+      tf(w, `scale(${1.8 - 0.8 * easeBack(p)})`);
+      w.style.color = lb >= 12 ? INTRO.c2 : "#fff";
+      w.style.textShadow = `0 0 ${30 + 40 * pulse(lb)}px ${INTRO.c}`;
+    });
+    const sub = tw.querySelector(".sub");
+    enter(sub, lb, 12, 0.5, 0, 40);
+  }
+}
+
+function renderCompany(el, c, lb) {
+  const logoWrap = el.querySelector(".logo-wrap");
+  const logo = logoWrap.querySelector(".logo");
+  const pIn = prog(lb, 0, 0.5);
+  const beatP = pulse(lb, 7);
+  const scale = (lb < 0.5 ? 2.0 - 1.0 * easeOut(pIn) : 1) * (1 + 0.07 * beatP);
+  tf(logoWrap, `scale(${scale})`);
+  logo.style.filter = `${glitchFilter(1 - pIn)} drop-shadow(0 0 ${20 + 30 * beatP}px ${c.c})`.replace("none ", "");
+  el.querySelector(".ring").style.transform = `rotate(${lb * 22.5}deg)`;
+  el.querySelector(".ring2").style.transform = `rotate(${-lb * 45}deg)`;
+  el.querySelector(".ring2").style.transformOrigin = "205px 205px";
+
+  const model = el.querySelector(".model");
+  const pm = prog(lb, 1, 1);
+  model.textContent = lb < 1 ? "" : scramble(c.model, pm * 1.2, Math.floor(lb * 12) + c.model.length);
+  model.style.opacity = lb >= 1 ? 1 : 0;
+  tf(model, `scale(${1 + 0.04 * pulse(lb, 8) * (lb >= 2 ? 1 : 0)})`);
+  enter(el.querySelector(".by"), lb, 2, 0.5, 0, 30);
+  enter(el.querySelector(".hud-top"), lb, 0, 0.5, 0, -30);
+
+  enter(el.querySelector(".r1"), lb, 4, 0.5, -200, 0);
+  enter(el.querySelector(".r2"), lb, 8, 0.5, 200, 0);
+  enter(el.querySelector(".r3"), lb, 12, 0.5, -200, 0);
+  el.querySelectorAll(".chip").forEach((ch, i) => {
+    const p = prog(lb, 12 + i, 0.35);
+    ch.style.opacity = p > 0 ? 1 : 0;
+    tf(ch, `scale(${p > 0 ? 1.6 - 0.6 * easeBack(p) : 0.5})`);
+  });
+  // card accent flashes on its own downbeat
+  [["r1", 4], ["r2", 8], ["r3", 12]].forEach(([r, s]) => {
+    const card = el.querySelector("." + r);
+    const k = lb >= s ? Math.exp(-(lb - s) * 4) : 0;
+    card.style.boxShadow = `0 0 ${60 * k}px ${c.c}`;
+    card.style.borderColor = `rgba(255,255,255,${0.12 + 0.6 * k})`;
+  });
+}
+
+function exitGlitch(el, lb, len) {
+  // last half-beat of a scene: slice/skew out so the next downbeat lands clean
+  const p = prog(lb, len - 0.5, 0.5);
+  if (p <= 0) { el.style.filter = "none"; el.style.opacity = 1; el.style.transform = "none"; el.style.clipPath = "none"; return; }
+  const j = Math.floor(lb * 16);
+  el.style.transform = `translateX(${(hash(j) - 0.5) * 80 * p}px) skewX(${(hash(j + 3) - 0.5) * 20 * p}deg) scale(${1 + 0.12 * p})`;
+  el.style.filter = glitchFilter(p);
+  const y1 = Math.floor(hash(j + 1) * 1920), h = 120 + hash(j + 2) * 300;
+  el.style.clipPath = p > 0.5 ? `polygon(0 0,100% 0,100% ${y1}px,0 ${y1}px,0 ${y1 + h}px,100% ${y1 + h}px,100% 100%,0 100%)` : "none";
+  el.style.opacity = 1 - p * 0.6;
+}
+
+function renderOutro(lb) {
+  setVars(stage, INTRO.c, INTRO.c2);
+  outro.querySelectorAll(".tile").forEach((t, i) => {
+    const s = i * 0.5;
+    const p = prog(lb, s, 0.4);
+    t.style.opacity = p > 0 ? 1 : 0;
+    tf(t, `scale(${p > 0 ? 1.3 - 0.3 * easeBack(p) : 0.6})`);
+    const hit = (Math.floor(lb) % 8) === i && lb >= 8;
+    t.style.borderColor = hit ? COMPANIES[i].c2 : "rgba(255,255,255,0.14)";
+    t.style.boxShadow = hit ? `0 0 ${50 * pulse(lb)}px ${COMPANIES[i].c}` : "none";
+    if (p > 0 && p < 1) t.style.filter = glitchFilter(1 - p); else t.style.filter = "none";
+  });
+  const l1 = outro.querySelector(".outro-l1"), l2 = outro.querySelector(".outro-l2");
+  l1.style.opacity = prog(lb, 8, 0.2); tf(l1, `scale(${1.6 - 0.6 * easeBack(prog(lb, 8, 0.5))})`);
+  l2.style.opacity = prog(lb, 10, 0.2); tf(l2, `scale(${1.6 - 0.6 * easeBack(prog(lb, 10, 0.5))})`);
+  l2.style.textShadow = `0 0 ${20 + 30 * pulse(lb)}px ${INTRO.c}`;
+}
+
+function renderFrame(t) {
+  const b = Math.max(0, t / BEAT);
+  let color = INTRO.c, energy = 1;
+  [intro, outro, ...companyScenes].forEach(s => s.style.display = "none");
+  let sceneStart = 0, len = INTRO_BEATS, active;
+  if (b < INTRO_BEATS) {
+    active = intro; show(intro, true); renderIntro(b);
+    color = getComputedStyle(stage).getPropertyValue("--c").trim() || INTRO.c;
+    energy = b < 4 ? 0.6 : 1;
+  } else if (b < INTRO_BEATS + COMPANIES.length * SCENE_BEATS) {
+    const i = Math.floor((b - INTRO_BEATS) / SCENE_BEATS);
+    sceneStart = INTRO_BEATS + i * SCENE_BEATS; len = SCENE_BEATS;
+    const c = COMPANIES[i];
+    active = companyScenes[i]; show(active, true);
+    setVars(stage, c.c, c.c2);
+    renderCompany(active, c, b - sceneStart);
+    color = c.c;
+  } else {
+    sceneStart = INTRO_BEATS + COMPANIES.length * SCENE_BEATS; len = OUTRO_BEATS;
+    active = outro; show(outro, true); renderOutro(b - sceneStart);
+    color = INTRO.c;
+  }
+  const lb = b - sceneStart;
+  if (active !== outro || lb < len - 0.5) exitGlitch(active, lb, len); else exitGlitch(active, 0, len);
+
+  drawBg(b, color, energy);
+
+  // white flash + screen shake on every scene downbeat; small shake on bar downbeats
+  const sinceScene = lb;
+  const sceneHit = sinceScene < 0.6 && active !== intro ? Math.exp(-sinceScene * 9) : 0;
+  const bar = b / 4, sinceBar = (bar - Math.floor(bar)) * 4;
+  const barHit = Math.exp(-sinceBar * 8) * 0.35;
+  flash.style.opacity = (sceneHit * 0.85).toFixed(3);
+  const shake = Math.max(sceneHit, barHit);
+  const fi = Math.floor(b * 24);
+  scenesEl.style.transform = shake > 0.02 ? `translate(${(hash(fi) - 0.5) * 40 * shake}px, ${(hash(fi + 5) - 0.5) * 40 * shake}px)` : "none";
+  hudEl.style.opacity = 0.6 + 0.4 * pulse(b);
+  bpmEl.textContent = `♪ 126 BPM · BAR ${String(Math.floor(b / 4) + 1).padStart(2, "0")} · BEAT ${(Math.floor(b) % 4) + 1}`;
+}
+window.renderFrame = renderFrame;
+
+// ---------- preview player ----------
+const params = new URLSearchParams(location.search);
+function fitStage() {
+  if (params.has("render")) { stage.style.transform = "none"; return; }
+  const s = Math.min(innerWidth / 1080, (innerHeight - 70) / 1920);
+  stage.style.transform = `scale(${s})`;
+}
+addEventListener("resize", fitStage);
+
+document.fonts.ready.then(() => {
+  fitAll();
+  fitStage();
+  if (params.has("render")) document.body.classList.add("render");
+  renderFrame(parseFloat(params.get("t") || "0"));
+  window.READY = true;
+});
+
+let playing = false, t0 = 0, startAt = 0, audio = null;
+const playBtn = document.getElementById("play"), seek = document.getElementById("seek"), timeEl = document.getElementById("time");
+const offsetEl = document.getElementById("offset");
+function now() { return audio ? audio.currentTime - parseFloat(offsetEl.value || 0) : (performance.now() - t0) / 1000 + startAt; }
+function tick() {
+  if (!playing) return;
+  let t = now();
+  if (t >= DURATION) { playing = false; playBtn.textContent = "▶ 播放"; t = DURATION; if (audio) audio.pause(); }
+  renderFrame(t); seek.value = (t / DURATION) * 1000; timeEl.textContent = t.toFixed(2) + "s";
+  requestAnimationFrame(tick);
+}
+playBtn.onclick = () => {
+  playing = !playing;
+  playBtn.textContent = playing ? "❚❚ 暂停" : "▶ 播放";
+  if (playing) {
+    startAt = (seek.value / 1000) * DURATION;
+    if (startAt >= DURATION - 0.05) startAt = 0;
+    t0 = performance.now();
+    if (audio) { audio.currentTime = startAt + parseFloat(offsetEl.value || 0); audio.play(); }
+    tick();
+  } else if (audio) audio.pause();
+};
+seek.oninput = () => { const t = (seek.value / 1000) * DURATION; renderFrame(t); timeEl.textContent = t.toFixed(2) + "s"; if (audio && !playing) audio.currentTime = t + parseFloat(offsetEl.value || 0); };
+document.getElementById("music").onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  audio = new Audio(URL.createObjectURL(f));
+};
+</script>
+</body>
+</html>
