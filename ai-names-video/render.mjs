@@ -26,10 +26,11 @@ const port = server.address().port;
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox", "--hide-scrollbars", "--force-color-profile=srgb"] });
 const page = await browser.newPage();
-await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
+await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
 await page.goto(`http://localhost:${port}/index.html?render=1`);
 await page.waitForFunction("window.READY === true");
 const meta = await page.evaluate("window.VIDEO_META");
+fs.writeFileSync(path.join(dir, "out", "cuts.json"), JSON.stringify(meta));
 const from = Number(process.env.FROM || 0), to = Math.min(Number(process.env.TO || meta.DURATION), meta.DURATION);
 const frames = Math.round((to - from) * FPS);
 console.log(`duration ${meta.DURATION.toFixed(3)}s, rendering ${frames} frames @${FPS}fps`);
@@ -57,7 +58,7 @@ if (process.env.MUSIC) {
   audioArgs = ["-ss", String(start), "-t", len, "-i", process.env.MUSIC];
 } else {
   const guide = path.join(dir, "out", "guide-126bpm.wav");
-  execFileSync("node", [path.join(dir, "make-guide.mjs"), guide], { stdio: "inherit" });
+  execFileSync("node", [path.join(dir, "make-guide.mjs"), guide, path.join(dir, "out", "cuts.json")], { stdio: "inherit" });
   audioArgs = ["-ss", String(from), "-t", len, "-i", guide];
 }
 const out = path.join(dir, "out", process.env.MUSIC ? "ai-names-music.mp4" : "ai-names.mp4");

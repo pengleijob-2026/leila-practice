@@ -1,10 +1,12 @@
-// Synthesizes an original 126 BPM four-on-the-floor guide track that matches the
-// video's beat grid: kick every beat, offbeat hats, a crash + sub drop on every
-// scene change (every 16 beats) and a noise riser into each one.
+// Synthesizes an original 126 BPM four-on-the-floor guide track on the video's beat
+// grid: kick every beat, offbeat hats, and accents read from cuts.json (crash + sub
+// drop on company changes, impact on model changes, a riser into each company).
 import fs from "node:fs";
 
 const SR = 44100, BPM = 126, BEAT = 60 / BPM;
-const TOTAL_BEATS = 16 + 8 * 16 + 16;
+const meta = JSON.parse(fs.readFileSync(process.argv[3], "utf8"));
+const TOTAL_BEATS = meta.TOTAL_BEATS;
+const cutAt = new Map(meta.cuts.map(c => [Math.round(c.beat), c.kind]));
 const N = Math.ceil((TOTAL_BEATS * BEAT + 1.5) * SR);
 const L = new Float32Array(N);
 let seed = 1;
@@ -32,10 +34,11 @@ for (let b = 0; b < TOTAL_BEATS; b++) {
   hat(t + BEAT / 2);
   if (b >= 4) { hat(t + BEAT / 4, 0.07); hat(t + 3 * BEAT / 4, 0.07); }
   if (b % 2 === 1 && b >= 4) clap(t);
-  if (b % 16 === 0) { crash(t); sub(t, 49); }
+  const kind = cutAt.get(b);
+  if (kind === "company") { crash(t); sub(t, 49); }
+  if (kind === "model") { crash(t); }
   if (b % 4 === 0) sub(t, chord[(b / 4) % 4] / 2);
-  if (b % 16 === 12) riser(t, BEAT * 4);
-  if (b >= 4 && b < 8) kick(t + BEAT / 2, 0.6); // logo rapid-fire on 8th notes
+  if (cutAt.get(b + 4) === "company") riser(t, BEAT * 4);
 }
 
 let peak = 0; for (const v of L) peak = Math.max(peak, Math.abs(v));
