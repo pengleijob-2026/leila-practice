@@ -8,6 +8,11 @@
   html, body { margin: 0; height: 100%; overflow: hidden; background: #e6dcc6; touch-action: none; }
   #gl { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
   #frame { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+  #character {
+    position: fixed; right: 7vw; bottom: 9vh; height: 46vh; width: auto; pointer-events: none;
+    opacity: 0; will-change: transform, opacity;
+  }
+  @media (max-aspect-ratio: 4/5) { #character { height: 34vh; right: 5vw; bottom: 9.5vh; } }
   #title {
     position: fixed; left: 3.2vw; bottom: 2.2vh; pointer-events: none;
     font-family: "Noto Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", "SimSun", serif;
@@ -29,6 +34,8 @@
 </head>
 <body>
 <canvas id="gl"></canvas>
+<!-- 2D character layer: replace character.png (transparent PNG, facing camera) or pass ?char=path -->
+<img id="character" alt="" />
 <canvas id="frame"></canvas>
 <div id="title">墨灵记 · 青墨镇</div>
 <div id="hint">拖拽环视 · 双指缩放</div>
@@ -41,7 +48,8 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { FullScreenQuad } from "three/addons/postprocessing/Pass.js";
 
 const params = new URLSearchParams(location.search);
-const MOBILE = matchMedia("(pointer: coarse)").matches || Math.min(innerWidth, innerHeight) < 600;
+const RENDER = params.has("render");   // offline export: no rAF loop, frames driven by window.renderFrame(t)
+const MOBILE = !RENDER && (matchMedia("(pointer: coarse)").matches || Math.min(innerWidth, innerHeight) < 600);
 
 // ---------------- seeded random ----------------
 let seed = 20260419;
@@ -51,7 +59,7 @@ const pick = arr => arr[Math.floor(rand() * arr.length)];
 
 // ---------------- renderer / scene ----------------
 const canvas = document.getElementById("gl");
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance" });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: "high-performance", preserveDrawingBuffer: RENDER });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
@@ -386,9 +394,11 @@ const waterShader = {
     varying vec4 vUv; varying vec3 vWorld;
     void main() {
       vec2 p = vWorld.xz;
+      vec2 q = p - vec2(0.0, uTime * 0.35);   // ripples drift slowly downstream (toward +z)
       vec2 d = vec2(
-        sin(p.y * 1.7 + uTime * 0.9 + p.x * 0.6) + 0.5 * sin(p.y * 4.1 - uTime * 1.3 + p.x * 2.3),
-        cos(p.x * 1.3 - uTime * 0.7 + p.y * 0.4) + 0.5 * cos(p.x * 3.7 + uTime * 1.1 - p.y * 1.9)) * 0.0028;
+        sin(q.y * 1.7 + uTime * 0.9 + q.x * 0.6) + 0.5 * sin(q.y * 4.1 - uTime * 1.3 + q.x * 2.3),
+        cos(q.x * 1.3 - uTime * 0.7 + q.y * 0.4) + 0.5 * cos(q.x * 3.7 + uTime * 1.1 - q.y * 1.9)) * 0.0028;
+      d += vec2(sin(uTime * 0.55 + p.y * 0.18), 0.4 * cos(uTime * 0.4 + p.x * 0.2)) * 0.0011;
       float ringLight = 0.0;
       for (int i = 0; i < ${MAX_RIPPLES}; i++) {
         vec4 r = uRipples[i];
@@ -554,7 +564,8 @@ const lanterns = [];
   const tasselMat = new THREE.MeshStandardMaterial({ color: "#8a2a20", roughness: 1 });
   lanternSpots.slice(0, 10).forEach((p, i) => {
     const pivot = new THREE.Group(); pivot.position.copy(p).setY(p.y + 0.55); pivot.scale.setScalar(1.35);
-    const body = new THREE.Mesh(bodyGeo, lanternMat); body.position.y = -0.85; body.castShadow = true;
+    const body = new THREE.Mesh(bodyGeo, lanternMat.clone()); body.position.y = -0.85; body.castShadow = true;
+    pivot.userData.body = body;
     const c1 = new THREE.Mesh(capGeo, darkMat); c1.position.y = -0.53;
     const c2 = new THREE.Mesh(capGeo, darkMat); c2.position.y = -1.17;
     const tas = new THREE.Mesh(tasselGeo, tasselMat); tas.position.y = -1.36;
@@ -681,9 +692,11 @@ const blossomPts = [], blossomCols = [];
           float strandLen = 1.0;
         #endif
         float along = clamp(-position.y, 0.0, 1.0);
-        float w = along * along * strandLen;
-        mvPosition.x += (sin(uTime * 0.75 + aPhase) * 0.16 + sin(uTime * 1.9 + aPhase * 2.3 + along * 3.0) * 0.035) * w;
-        mvPosition.z += (cos(uTime * 0.55 + aPhase * 1.3) * 0.09) * w;
+        float w = along * along * strandLen;           // root still, tip swings most
+        float f = 1.26 + 0.84 * fract(aPhase * 7.31);  // per-strand period 3-5 s
+        float gust = 0.8 + 0.2 * sin(uTime * 0.29 + aPhase * 0.15);
+        mvPosition.x += (sin(uTime * f + aPhase) * 0.14 * gust + sin(uTime * f * 2.3 + aPhase * 2.3 + along * 3.0) * 0.025) * w;
+        mvPosition.z += cos(uTime * f * 0.8 + aPhase * 1.3) * 0.075 * gust * w;
         mvPosition = modelViewMatrix * mvPosition;
         gl_Position = projectionMatrix * mvPosition;`);
   };
@@ -759,9 +772,11 @@ const mountainLayers = [
   { tex: mountainTexture("160,168,176", [[0.06, 0.36, 0.3], [0.3, 0.44, 0.3], [0.5, 0.6, 0.34], [0.72, 0.42, 0.3], [0.95, 0.38, 0.25]], 0.2, 0.6), w: 860, h: 240, pos: [10, 30, -320], op: 0.75 },
   { tex: mountainTexture("186,192,198", [[0.15, 0.45, 0.35], [0.45, 0.55, 0.3], [0.72, 0.5, 0.36], [0.95, 0.4, 0.3]], 0.18, 0.3), w: 1000, h: 300, pos: [0, 40, -420], op: 0.6 }
 ];
-mountainLayers.slice().reverse().forEach(L => {
+const mountains = [];
+mountainLayers.slice().reverse().forEach((L, i) => {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(L.w, L.h), new THREE.MeshBasicMaterial({ map: L.tex, transparent: true, opacity: L.op, depthWrite: false, fog: false }));
   m.position.set(...L.pos); m.renderOrder = -1; scene.add(m);
+  m.userData = { op: L.op, phase: i * 2.1 }; mountains.push(m);
 });
 const mists = [];
 for (let i = 0; i < 9; i++) {
@@ -770,6 +785,7 @@ for (let i = 0; i < 9; i++) {
   m.material.map.needsUpdate = true;
   m.position.set(f.p.x + rr(-8, 8), rr(1.5, 5.5), f.p.z);
   m.userData.speed = rr(0.004, 0.01) * (rand() < 0.5 ? 1 : -1);
+  m.userData.x0 = m.position.x; m.userData.op = m.material.opacity; m.userData.phase = i * 1.37;
   scene.add(m); mists.push(m);
 }
 
@@ -879,10 +895,15 @@ function drawFrame() {
 }
 drawFrame();
 
-// ---------------- camera: 15 s glide upriver, then orbit ----------------
-const INTRO = params.has("skip") ? 0 : 15;
-const camPath = new THREE.CatmullRomCurve3([0.0, 6.5, 13, 19.5, 26].map((s, i) => { const f = frameAt(s); return f.p.clone().addScaledVector(f.n, -0.6).setY(5.2 - i * 0.62); }));
-const lookPath = new THREE.CatmullRomCurve3([22, 30, 38, 46, 54].map((s, i) => { const f = frameAt(s); return f.p.clone().setY(3.4 - i * 0.18); }));
+// ---------------- camera: one continuous 15 s push upriver, then orbit ----------------
+// 4.5 m high at the near end of the canal -> 2.8 m high, 25 m further along the centre line.
+// Moves for 13 s with a quintic ease (zero velocity and acceleration at both ends), then holds for 2 s.
+const SHOT = 15, MOVE = 13;
+const INTRO = params.has("skip") ? 0 : SHOT;
+const smoother = x => x * x * x * (x * (x * 6 - 15) + 10);
+const camPath = new THREE.CatmullRomCurve3([0, 6.25, 12.5, 18.75, 25].map((s, i) => frameAt(s).p.clone().setY(4.5 - 1.7 * smoother(i / 4))), false, "centripetal");
+const LOOK = new THREE.Vector3(-4, -9, -235);   // the misty peaks; fixed so the view never wobbles
+const shotU = t => smoother(THREE.MathUtils.clamp(t / MOVE, 0, 1));
 const controls = new OrbitControls(camera, canvas);
 controls.enabled = false; controls.enableDamping = true; controls.dampingFactor = 0.06; controls.enablePan = false;
 controls.minDistance = 8; controls.maxDistance = 34; controls.minPolarAngle = 1.12; controls.maxPolarAngle = 1.5; controls.rotateSpeed = 0.45; controls.zoomSpeed = 0.6;
@@ -890,16 +911,54 @@ let orbiting = false;
 function startOrbit() {
   orbiting = true;
   camera.position.copy(camPath.getPointAt(1));
-  controls.target.copy(lookPath.getPointAt(1));
+  controls.target.copy(camera.position).addScaledVector(LOOK.clone().sub(camera.position).normalize(), 20);
   controls.update();
   const az = controls.getAzimuthalAngle();
   controls.minAzimuthAngle = az - 0.55; controls.maxAzimuthAngle = az + 0.55;
   controls.enabled = true;
+  if (RENDER) return;
   document.getElementById("hint").style.opacity = 0.8;
   setTimeout(() => document.getElementById("hint").style.opacity = 0, 5000);
 }
 canvas.addEventListener("dblclick", () => { if (!orbiting) startOrbit(); });
-const ease = x => x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+
+// ---------------- 2D character layer (placeholder until a real transparent PNG is supplied) ----------------
+const charEl = document.getElementById("character");
+const CHAR_IN = 12.6, CHAR_FADE = 1.6;   // fades in as the camera settles
+function placeholderCharacter() {
+  // soft ink-wash silhouette: figure in a long robe under an oil-paper umbrella
+  const [c, g] = cnv(420, 900);
+  const ink = a => `rgba(52,50,47,${a})`;
+  g.translate(210, 0);
+  const robe = g.createLinearGradient(0, 300, 0, 900); robe.addColorStop(0, ink(0.9)); robe.addColorStop(0.75, ink(0.72)); robe.addColorStop(1, ink(0));
+  g.fillStyle = robe; g.beginPath();
+  g.moveTo(-34, 300); g.bezierCurveTo(-60, 420, -92, 640, -128, 870); g.quadraticCurveTo(0, 892, 128, 870);
+  g.bezierCurveTo(96, 640, 62, 420, 34, 300); g.closePath(); g.fill();
+  g.fillStyle = ink(0.72); g.beginPath(); g.ellipse(-44, 420, 18, 120, 0.12, 0, 7); g.fill(); g.beginPath(); g.ellipse(46, 420, 18, 120, -0.12, 0, 7); g.fill();
+  g.fillStyle = ink(0.85); g.beginPath(); g.ellipse(0, 262, 30, 36, 0, 0, 7); g.fill();
+  g.beginPath(); g.ellipse(0, 222, 20, 16, 0, 0, 7); g.fill();
+  g.fillStyle = ink(0.9); g.fillRect(-26, 300, 52, 14);
+  g.strokeStyle = ink(0.8); g.lineWidth = 4; g.beginPath(); g.moveTo(40, 430); g.lineTo(8, 70); g.stroke();
+  const um = g.createRadialGradient(8, 70, 10, 8, 120, 210); um.addColorStop(0, "rgba(168,64,47,0.82)"); um.addColorStop(1, "rgba(140,58,46,0.6)");
+  g.fillStyle = um; g.beginPath(); g.moveTo(-196, 168); g.quadraticCurveTo(8, 10, 212, 168);
+  for (let k = 8; k >= 0; k--) { const x = -196 + k * 51; g.quadraticCurveTo(x + 25.5, 150, x, 168); }
+  g.fill();
+  g.strokeStyle = "rgba(60,30,25,0.35)"; g.lineWidth = 1.5;
+  for (let k = 0; k <= 8; k++) { g.beginPath(); g.moveTo(8, 62); g.lineTo(-196 + k * 51, 168); g.stroke(); }
+  return c.toDataURL("image/png");
+}
+const charReady = new Promise(res => {
+  charEl.onload = res;
+  charEl.onerror = () => { charEl.onerror = null; charEl.src = placeholderCharacter(); };
+  if (params.has("nochar")) { charEl.style.display = "none"; res(); }
+  else charEl.src = params.get("char") || "character.png";
+});
+function updateCharacter(t) {
+  const a = THREE.MathUtils.smoothstep(t, CHAR_IN, CHAR_IN + CHAR_FADE);
+  const bob = Math.sin(t * Math.PI * 2 / 4.2) * 0.6;   // vh
+  charEl.style.opacity = a.toFixed(3);
+  charEl.style.transform = `translateY(${(bob + (1 - a) * 2.5).toFixed(3)}vh)`;
+}
 
 // ---------------- resize ----------------
 function onResize() {
@@ -920,28 +979,53 @@ onResize();
 // ---------------- loop ----------------
 const clock = new THREE.Clock();
 const T0 = parseFloat(params.get("t") || "0");
-function frame() {
-  const t = params.has("freeze") ? parseFloat(params.get("freeze")) : clock.getElapsedTime() + T0;
+// every animated value is a pure function of t, so offline frames at fixed steps match the live view
+function renderAt(t) {
   WIND.uTime.value = t;
   water.material.uniforms.uTime.value = t;
   if (!orbiting) {
-    if (t >= INTRO) startOrbit();
-    else { const u = ease(t / INTRO); camera.position.copy(camPath.getPointAt(u)); camera.lookAt(lookPath.getPointAt(u)); }
+    if (!RENDER && t >= INTRO) startOrbit();
+    else { camera.position.copy(camPath.getPointAt(INTRO ? shotU(t) : 1)); camera.lookAt(LOOK); }
   }
   if (orbiting) controls.update();
-  lanterns.forEach(l => { l.rotation.z = Math.sin(t * 1.1 + l.userData.phase) * 0.07; l.rotation.x = Math.sin(t * 0.8 + l.userData.phase * 1.3) * 0.04; });
-  mists.forEach(m => { m.material.map.offset.x += m.userData.speed * 0.1; m.position.x += Math.sin(t * 0.05 + m.position.z) * 0.002; m.lookAt(camera.position.x, m.position.y, camera.position.z); });
+  lanterns.forEach(l => {
+    const ph = l.userData.phase;
+    l.rotation.z = Math.sin(t * 1.1 + ph) * 0.07; l.rotation.x = Math.sin(t * 0.8 + ph * 1.3) * 0.04;
+    l.userData.body.material.emissiveIntensity = 0.45 * (1 + 0.1 * Math.sin(t * 2.3 + ph) + 0.06 * Math.sin(t * 5.9 + ph * 2.1) + 0.04 * Math.sin(t * 11.7 + ph * 0.7));
+  });
+  mists.forEach(m => {
+    const u = m.userData;
+    m.material.map.offset.x = u.speed * 1.6 * t;
+    m.position.x = u.x0 + Math.sin(t * 0.11 + u.phase) * 1.8 + u.speed * 25 * t;
+    m.material.opacity = u.op * (1 + 0.15 * Math.sin(t * 0.37 + u.phase));
+    m.lookAt(camera.position.x, m.position.y, camera.position.z);
+  });
+  mountains.forEach(m => {
+    const b = Math.sin(t * Math.PI * 2 / 9 + m.userData.phase);   // slow breathing of the ink tone
+    m.material.opacity = m.userData.op * (1 + 0.05 * b);
+    m.material.color.setScalar(1 - 0.035 * (0.5 + 0.5 * b));
+  });
   updatePetals(t);
+  updateCharacter(t);
   if (params.has("nopost")) renderer.render(scene, camera);
   else {
     renderer.setRenderTarget(sceneRT); renderer.render(scene, camera);
     ink.uniforms.tDiffuse.value = sceneRT.texture; ink.uniforms.tDepth.value = sceneRT.depthTexture;
     renderer.setRenderTarget(null); inkQuad.render(renderer);
   }
+}
+function frame() {
+  renderAt(params.has("freeze") ? parseFloat(params.get("freeze")) : clock.getElapsedTime() + T0);
   requestAnimationFrame(frame);
 }
-frame();
-window.__ready = true;
+if (RENDER) {
+  window.renderFrame = t => { renderAt(t); renderer.getContext().finish(); };
+  window.VIDEO_META = { DURATION: SHOT };
+  charReady.then(() => { renderAt(0); window.__ready = true; });
+} else {
+  frame();
+  window.__ready = true;
+}
 </script>
 </body>
 </html>
