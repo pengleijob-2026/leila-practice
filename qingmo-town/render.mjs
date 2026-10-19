@@ -32,10 +32,10 @@ const server = http.createServer((req, res) => {
 const port = server.address().port;
 
 const gpuArgs = process.env.GPU ? ["--enable-gpu", "--ignore-gpu-blocklist"] : ["--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--ignore-gpu-blocklist"];
-const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, protocolTimeout: 0, args: ["--no-sandbox", "--hide-scrollbars", "--force-color-profile=srgb", ...gpuArgs] });
-
 async function renderSize([W, H]) {
   const tag = `${W}x${H}`;
+  // one browser per size: a background tab in a shared browser never finishes its screenshot
+  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, protocolTimeout: 0, args: ["--no-sandbox", "--hide-scrollbars", "--force-color-profile=srgb", ...gpuArgs] });
   const page = await browser.newPage();
   page.on("pageerror", e => console.error(`[${tag}] page error:`, e.message));
   await page.setViewport({ width: W, height: H, deviceScaleFactor: 1 });
@@ -67,10 +67,9 @@ async function renderSize([W, H]) {
   }
   ff.stdin.end();
   await new Promise(r => ff.on("close", r));
-  await page.close();
+  await browser.close();
   console.log(`[${tag}] wrote ${file}`);
 }
 
 await Promise.all(SIZES.map(renderSize));
-await browser.close();
 server.close();
