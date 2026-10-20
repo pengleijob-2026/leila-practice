@@ -1,0 +1,99 @@
+1
+00:00:00,800 --> 00:00:04,600
+大多数技术解释，都长这样：方框，加箭头。
+Most explanations look like this: boxes and arrows.
+
+2
+00:00:05,000 --> 00:00:08,800
+它告诉你零件存在，却没说零件在做什么。
+They tell you the parts exist — not what the parts do.
+
+3
+00:00:09,600 --> 00:00:13,600
+如果，解释本身就是一台会动的机器？
+What if the explanation was the machine itself?
+
+4
+00:00:14,000 --> 00:00:20,600
+Anatomy：说出一个想法，Claude 就为它造一台机器。
+Anatomy: name an idea, and Claude invents a machine that does it.
+
+5
+00:00:21,400 --> 00:00:26,000
+先收集真实数字，再发明机器，零件至少四十个。
+Real numbers first. Then the machine. At least forty parts.
+
+6
+00:00:26,400 --> 00:00:30,900
+最后截图、放大四倍，像评论家一样挑错。
+Then it checks every joint at 4×, like a critic.
+
+7
+00:00:33,400 --> 00:00:37,400
+大模型的“温度”，变成了一台轮盘赌。
+An LLM's temperature, built as a roulette wheel.
+
+8
+00:00:37,700 --> 00:00:41,700
+每个格子是一个候选词，宽度就是它的概率。
+Each pocket is a candidate token, as wide as its probability.
+
+9
+00:00:42,000 --> 00:00:45,800
+温度调低，大概率的格子变宽——
+Turn it down and the likely pockets widen —
+
+10
+00:00:46,000 --> 00:00:48,700
+回答就变得更确定。
+so the answer becomes more certain.
+
+11
+00:00:51,200 --> 00:00:55,600
+一句话，Claude 独立工作1 小时 54 分，造出一枚机芯。
+One line. One hour fifty-four minutes. A watch movement.
+
+12
+00:00:56,000 --> 00:01:01,000
+慢放一百倍：擒纵叉每次只放过半个齿。
+Slowed down 100×: the pallet fork lets through half a tooth at a time.
+
+13
+00:01:01,600 --> 00:01:07,600
+拆开夹板，齿轮按真实比例咬合——每个数字都是真的。
+Lift the bridges: every wheel is cut to true ratios.
+
+14
+00:01:10,200 --> 00:01:14,400
+SpaceX 猛禽 2 发动机，上百个零件。
+SpaceX's Raptor 2 — hundreds of parts.
+
+15
+00:01:14,800 --> 00:01:19,000
+拆成十一个组件，审计证明：没有一根管道穿模。
+Eleven assemblies — and an audit proves no pipe passes through anything.
+
+16
+00:01:19,400 --> 00:01:26,600
+按下 I 点火——火焰就活在同一个等轴视角里。
+Press I to fire: the plume lives inside the same isometric camera.
+
+17
+00:01:27,400 --> 00:01:33,800
+LRU 缓存是一个书架，布隆过滤器是一台老虎机……
+An LRU cache is a bookcase. A bloom filter is a fruit machine…
+
+18
+00:01:34,200 --> 00:01:41,000
+三十多台机器，每一台，都只从一句话开始。
+Over thirty machines — each one started from a single line.
+
+19
+00:01:42,000 --> 00:01:47,600
+一行命令安装，Claude Code、Codex、OpenCode 都能用。
+One command to install. Works in Claude Code, Codex, OpenCode and Antigravity.
+
+20
+00:01:48,200 --> 00:01:56,400
+说出你的想法，剩下的，交给Anatomy。
+Name your idea. Anatomy builds the rest.
