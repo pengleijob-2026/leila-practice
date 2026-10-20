@@ -1,0 +1,12 @@
+{
+  "name": "xuanzang-video",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "music": "node tools/music.mjs && ffmpeg -y -i /tmp/xz_music.wav -b:a 160k music.mp3",
+    "render": "node tools/render.mjs video /tmp/xz_silent.mp4 && ffmpeg -y -i /tmp/xz_silent.mp4 -i music.mp3 -c:v copy -c:a aac -b:a 192k -shortest xuanzang.mp4"
+  },
+  "devDependencies": {
+    "puppeteer-core": "^24.0.0"
+  }
+}
