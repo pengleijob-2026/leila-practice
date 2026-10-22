@@ -1,18 +1,15 @@
-"""第 5 集课文视频：逐句课文（本地配音 + 跟读停顿）+「故事里」对照（故事镜头 + 豆包台词）。
+"""第 5 集课文：逐句课文（角色豆包配音 + 跟读停顿）+「故事里」对照（故事镜头 + 豆包台词），蕾姐开场 / 结尾。
 
-读 tts_local.py 写出的 timing.json，输出 ChatCut edit_item 的 adds（三批：底层 / Logo）。
-用法：python kewen.py /tmp/ep05/local/timing.json
+输出 ChatCut edit_item 的 adds（两批：底层 / Logo）。用法：python kewen.py
 """
 import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from py import py
-from kewen_text import TEXTS
+from kewen_text import TEXTS, VOICE, LEI
 
 FPS = 30
 MG = "a64f09c26d"
 LOGO = "5c244a6699"
-VO = "c4a8ea6b05"
-GAIN = 3
 FRAME = dict(fit="cover", left=110, top=230, width=760, height=428)
 KF = {"s04": "ab5000d3-0e1e-4211-93b3-9f3a80ae9b61", "s05": "55696305-9a5f-4625-9162-43ae7ebb86c1",
       "s07": "a4f68736-5825-48da-8b1f-15b56523dd64", "s02": "3870bffc-4f01-475c-a116-ea9962a4ad3a"}
@@ -23,7 +20,6 @@ SHOT = {"s02": ("3b3e577d-994d-4e30-9b88-40bfc4672185", 13.04), "s04": ("f135a38
 ECHO_SHOTS = {"一": [("s04", 0)], "二": [("s05", 0)], "三": [("s07", 0), ("s08", 2)], "四": [("s02", 0)]}
 NOTE = "听一句，跟读一句 · Listen, then read aloud"
 
-TM = json.load(open(sys.argv[1] if len(sys.argv) > 1 else "/tmp/ep05/local/timing.json"))["kewen"]
 fr = lambda s: int(round(s * FPS))
 
 
@@ -31,11 +27,8 @@ def card(start, dur, **props):
     return dict(type="motion-graphic", assetId=MG, trackId="V1", fromFrame=start, durationInFrames=dur, propertyOverrides=props)
 
 
-def local(start, a, b):
-    """Local-TTS clip covering [a, b] seconds of kewen.wav, starting at timeline frame `start`."""
-    a, b = a - 0.05, b + 0.08
-    return dict(type="audio", assetId=VO, trackId="A1", fromFrame=start, durationInFrames=fr(b - a),
-                sourceStartFromInSeconds=round(a, 3), decibelAdjustment=GAIN)
+def clip(start, asset, sec):
+    return dict(type="audio", assetId=asset, trackId="A1", fromFrame=start, durationInFrames=fr(sec))
 
 
 def shot(key, start, dur):
@@ -49,11 +42,10 @@ def shot(key, start, dur):
 def build():
     adds, pics = [], []
     t = 0
-    ia, ib = TM["intro"][0][0], TM["intro"][-1][1]
-    d = fr(ib - ia) + 45
+    d = fr(LEI["intro"][1]) + 45
     adds.append(card(t, d, mode="title", badge="第三课 · 课文", title="左边那个红色的是我的",
                      titlePy=py("左边那个红色的是我的"), titleEn="Lesson 3 · The Red One on the Left Is Mine", note=NOTE))
-    adds.append(local(t + 15, ia, ib))
+    adds.append(clip(t + 15, *LEI["intro"]))
     t += d
     for tx in TEXTS:
         title = "课文" + tx["n"] + " · " + tx["title"]
@@ -63,14 +55,15 @@ def build():
         t += 90
         p0 = t
         n = len(tx["lines"])
-        for i, ((role, who, zh, en, hl), (a, b)) in enumerate(zip(tx["lines"], TM[tx["n"]]), 1):
-            v = fr(b - a + 0.13)
+        for i, (role, who, zh, en, hl) in enumerate(tx["lines"], 1):
+            asset, sec = VOICE[zh.replace("|", "")]
+            v = fr(sec)
             gap = max(60, v) + 15
             dur = 9 + v + gap
             adds.append(card(t, dur, mode="line", title=title, titlePy=tpy, titleEn=ten, idx=i, total=n,
                              role=role, speaker=who, zh=zh, py=py(zh.replace("|", "")), en=en, hl=hl,
                              echoAt=round((9 + v + 6) / FPS, 2)))
-            adds.append(local(t + 9, a, b))
+            adds.append(clip(t + 9, asset, sec))
             t += dur
         pics.append(dict(type="image", assetId=KF[tx["shot"]], trackId="V2", fromFrame=p0, durationInFrames=t - p0, **FRAME))
         n = len(tx["story"])
@@ -88,11 +81,10 @@ def build():
             s0 = starts[li]
             s1 = starts[segs[k + 1][1]] if k + 1 < len(segs) else t
             pics.append(shot(key, s0, s1 - s0))
-    oa, ob = TM["outro"][0][0], TM["outro"][-1][1]
-    d = fr(ob - oa) + 60
+    d = fr(LEI["outro"][1]) + 60
     adds.append(card(t, d, mode="title", badge="课文", title="读完啦！", titlePy=py("读完啦"),
                      titleEn="Great job!", note="你最喜欢哪一句？ · Which line do you like best?"))
-    adds.append(local(t + 15, oa, ob))
+    adds.append(clip(t + 15, *LEI["outro"]))
     t += d
     logo = [dict(type="image", assetId=LOGO, trackId="V3", fromFrame=0, durationInFrames=t,
                  left=40, top=872, width=176, height=176, fadeIn=0.5)]
