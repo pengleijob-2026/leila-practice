@@ -12,6 +12,8 @@ from py import py  # noqa: E402
 FPS = 30
 CARD = "a64f09c26d"
 SUB = "03ac03b814"
+# 沿用第 3 集春市配乐；A2 设为 follower、A1 设为 anchor，说话时自动压低
+BGM = "4c8ad55ca0"
 
 # (镜头, 角色, 中文, 英文, 配音素材, 实测时长秒)
 LINES = [
@@ -110,6 +112,8 @@ def build():
                                             titlePy=py("下集见"), titleEn="To be continued…",
                                             note="鹿鸣的琵琶为什么没有声音？ · Why is Luming's pipa silent?")))
     t += END
+    adds.append(dict(type="audio", assetId=BGM, trackId="A2", fromFrame=0, durationInFrames=t,
+                     sourceStartFromInSeconds=0, audioFadeIn=1, audioFadeOut=2.5))
     return dict(adds=adds, total=t)
 
 
