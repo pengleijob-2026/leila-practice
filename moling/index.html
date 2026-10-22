@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>墨灵记 The Ink Spirits · 角色设定与故事</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <div class="hero-text">
+      <h1 id="title"></h1>
+      <p class="sub" id="subtitle"></p>
+      <p class="tagline" id="tagline"></p>
+      <nav>
+        <a href="#ep01">第一集</a><a href="#ep02">第二集</a><a href="#world">世界观</a><a href="#cast">九位角色</a>
+        <a href="#relations">人物关系</a><a href="#season">第一季</a><a href="#teach">墨灵课堂</a><a href="#tutor">AI 陪练</a>
+      </nav>
+    </div>
+    <img class="hero-art" src="assets/10-lineup.jpg" alt="墨灵记九位角色群像" />
+  </header>
+
+  <main>
+    <section id="ep01">
+      <h2>第一集 · 长卷醒了 <small>故事背景与人物关系</small></h2>
+      <video controls playsinline preload="metadata" poster="assets/11-qingmo-town.jpg" src="assets/ep01/ep01-animatic.mp4"></video>
+      <p class="note">此处为分镜动态预览版（关键帧 + 运镜 + 中英字幕）。正式动画版（7 个 AI 生成镜头、鹿鸣旁白、配乐、中英双语字幕，1 分 24 秒）在 <a href="https://app.chatcut.io/editor/6076fee3-4371-40d5-905d-906db498140d" target="_blank" rel="noopener">ChatCut 项目「墨灵记 第1集 长卷醒了」</a>中。每个镜头下方附有可直接用于 AI 视频生成的提示词。</p>
+      <div class="shots" id="shots"></div>
+    </section>
+
+    <section id="ep02">
+      <h2>第二集 · 团团会说话了 <small>本集的字：春</small></h2>
+      <p class="note">小砚写了一遍又一遍"春"，枯柳还是灰的；直到团团把这个字念出来，颜色才回来。片尾附「墨灵小课堂」。正式动画版在 <a href="https://app.chatcut.io/editor/6076fee3-4371-40d5-905d-906db498140d" target="_blank" rel="noopener">ChatCut 项目</a>的「第2集 团团会说话了」时间线中。</p>
+      <div class="lesson" id="lesson2"></div>
+      <div class="shots" id="shots2"></div>
+    </section>
+
+    <section id="world">
+      <h2>世界观 <small>The World</small></h2>
+      <div class="world">
+        <img src="assets/11-qingmo-town.jpg" alt="青墨镇" />
+        <div>
+          <h3>长卷与青墨镇</h3><p id="w-summary"></p>
+          <h3>危机：灰雾</h3><p id="w-conflict"></p>
+          <h3>旅程</h3><p id="w-goal"></p>
+          <h3>主题</h3><p id="w-theme"></p>
+        </div>
+      </div>
+      <div class="places" id="places"></div>
+    </section>
+
+    <section id="cast">
+      <h2>九位角色 <small>点击查看完整设定</small></h2>
+      <div class="cast" id="castGrid"></div>
+    </section>
+
+    <section id="relations">
+      <h2>人物关系 <small>Relationships</small></h2>
+      <div class="rel-wrap"><svg id="relSvg" viewBox="-10 -10 820 830" role="img" aria-label="人物关系图"></svg></div>
+    </section>
+
+    <section id="season">
+      <h2 id="seasonName"></h2>
+      <div class="episodes" id="episodes"></div>
+    </section>
+
+    <section id="teach">
+      <h2>墨灵课堂 <small>HSK 2-9 教学系列</small></h2>
+      <p>同一批角色，两条系列线：<b>《墨灵记》故事线</b>给所有人看；<b>《墨灵课堂》教学线</b>每个级别由一位角色主讲，团团负责全级别发音跟读。</p>
+      <h3>每集结构</h3>
+      <table class="fmt"><thead><tr><th>环节</th><th>时长</th><th>内容</th></tr></thead><tbody id="fmtBody"></tbody></table>
+      <h3>级别与主讲</h3>
+      <div class="levels" id="levels"></div>
+    </section>
+
+    <section id="tutor">
+      <h2>AI 陪练 · 选择你的角色 <small>Choose your tutor</small></h2>
+      <p>学生可以按级别或喜好选择角色。每位角色都有对应的系统提示词，可直接接入 AI 陪练（也可在 <code>ai-personas.json</code> 中批量读取）。</p>
+      <div class="tutors" id="tutors"></div>
+    </section>
+  </main>
+
+  <dialog id="charDlg">
+    <form method="dialog"><button class="close" aria-label="关闭">×</button></form>
+    <div id="charBody"></div>
+  </dialog>
+
+  <footer>《墨灵记》角色与故事设定 · 内容由 AI 辅助生成</footer>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
