@@ -20,6 +20,12 @@ New Chinese style stylized 3D animation character design sheet, soft Song-dynast
 Full body, shown 2–3 times side by side on the same sheet: front view, three-quarter view, and one expressive pose, consistent design across all views.
 ```
 
+### 三视图排版（固定形象用）
+
+```text
+Full body, the same character shown three times side by side evenly spaced on one sheet: front view, exact side profile view facing right, back view; consistent design, proportions and colors across all three views, neutral standing pose, feet on the same ground line. No text, no labels.
+```
+
 ## 角色描述
 
 ### 1. 小砚 · 12 岁小画童（`01-xiaoyan.jpg`）
@@ -74,6 +80,24 @@ A tall elderly red-crowned crane standing upright, snow-white feathers, long bla
 
 ```text
 A tall thin mysterious young man in a long grey-white robe that looks like fading ink, the hem and sleeves dissolving into wisps of grey mist, holding a grey oil-paper umbrella, face half hidden in the umbrella's shadow, a quiet unfinished pale face, eyes lowered. Lonely, cold, melancholic, eerie but beautiful.
+```
+
+## 配角
+
+### 10. 糖画婆婆 · 阿灯的奶奶，夜市糖画摊（`10-tanghuapopo.jpg`，第 5 集）
+
+身高只有阿灯的一半，慈祥、手巧、说话慢。生成时同时传入 `05-adeng.jpg` 作参考，保证看得出是一家人。
+
+```text
+A tiny elderly white rabbit grandmother sugar-painting artisan, only half the height of the tall rabbit Adeng, slightly hunched, round and soft body, white fur with greyish tips, long ears drooping softly backward, small round gold-rimmed reading glasses, kind crinkled smiling eyes, rosy pink nose; grey-white hair bun at the back of her head pierced by a thin bamboo sugar-painting stick; ivory cross-collar short jacket over a celadon-green long skirt, a persimmon-orange floral-patterned apron with a pocket, sleeves tied up with a red cord; holding a small copper ladle dripping a thread of golden syrup. Gentle, patient, warm.
+```
+
+### 11. 小鹅 · 夜市送牛奶的（`11-xiaoe.jpg`，第 5 集）
+
+勤快、守时，脖子上的铜铃一响，大家就知道送牛奶的来了。鹅没有耳朵，生成时不要拿阿灯的图作参考，否则会长出兔耳。
+
+```text
+A small young white domestic goose (a real goose: smooth rounded head, long curved neck, no ears, no horns) working as a milk-delivery courier, standing upright, plump round body with soft snow-white feathers, short orange beak with a small orange knob at the base, big glossy black eyes, cheerful diligent expression, orange webbed feet, folded white wings used like hands; small round indigo-blue cloth cap sitting flat on its head, short indigo-blue sleeveless vest tied with a white sash, a small brass bell on a red cord around the neck; a bamboo shoulder pole across its shoulders with two small ivory ceramic milk cans with wooden lids hanging from ropes. Diligent, punctual, cheerful.
 ```
 
 ## 延伸用法
