@@ -1,6 +1,6 @@
 """第 5 集课文：逐句课文（角色豆包配音 + 跟读停顿）+「故事里」对照（故事镜头 + 豆包台词），蕾姐开场 / 结尾。
 
-输出 ChatCut edit_item 的 adds（两批：底层 / Logo）。用法：python kewen.py
+输出 ChatCut edit_item 的 adds（两批：底层 / 头像）。左下角常驻墨灵版蕾姐头像，蕾姐开场 / 结尾说话时叠上讲解头像 MG。用法：python kewen.py
 """
 import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -9,7 +9,9 @@ from kewen_text import TEXTS, VOICE, LEI
 
 FPS = 30
 MG = "a64f09c26d"
-LOGO = "5c244a6699"
+LOGO = "476e1866c4"
+SPEAK = "87e59d4419"
+AV_X, AV_Y = 128, 940
 FRAME = dict(fit="cover", left=110, top=230, width=760, height=428)
 KF = {"s04": "ab5000d3-0e1e-4211-93b3-9f3a80ae9b61", "s05": "55696305-9a5f-4625-9162-43ae7ebb86c1",
       "s07": "a4f68736-5825-48da-8b1f-15b56523dd64", "s02": "3870bffc-4f01-475c-a116-ea9962a4ad3a"}
@@ -46,6 +48,7 @@ def build():
     adds.append(card(t, d, mode="title", badge="第三课 · 课文", title="左边那个红色的是我的",
                      titlePy=py("左边那个红色的是我的"), titleEn="Lesson 3 · The Red One on the Left Is Mine", note=NOTE))
     adds.append(clip(t + 15, *LEI["intro"]))
+    lei = [(t + 15, fr(LEI["intro"][1]))]
     t += d
     for tx in TEXTS:
         title = "课文" + tx["n"] + " · " + tx["title"]
@@ -85,9 +88,13 @@ def build():
     adds.append(card(t, d, mode="title", badge="课文", title="读完啦！", titlePy=py("读完啦"),
                      titleEn="Great job!", note="你最喜欢哪一句？ · Which line do you like best?"))
     adds.append(clip(t + 15, *LEI["outro"]))
+    lei.append((t + 15, fr(LEI["outro"][1])))
     t += d
     logo = [dict(type="image", assetId=LOGO, trackId="V3", fromFrame=0, durationInFrames=t,
-                 left=40, top=872, width=176, height=176, fadeIn=0.5)]
+                 left=AV_X - 88, top=AV_Y - 88, width=176, height=176, fadeIn=0.5)]
+    logo += [dict(type="motion-graphic", assetId=SPEAK, trackId="V4", fromFrame=a - 3, durationInFrames=n + 10,
+                  left=AV_X - 150, top=AV_Y - 140, width=300, height=270, propertyOverrides=dict(photo=LOGO))
+             for a, n in lei]
     return adds + pics, logo, t
 
 

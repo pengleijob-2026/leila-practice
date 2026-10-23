@@ -1,7 +1,8 @@
 """第 5 集墨灵小课堂时间线（蕾姐逐句配音）。
 
 每句一条配音素材（lei_assets.py），按顺序排布；生词留跟读停顿，练习 / 小测在答案前留思考停顿。
-输出 ChatCut edit_item 的 adds，分三批写入 /tmp/ep05/lesson_p{1,2,3}.json（底层 / Logo / 字幕，空时间线按出现顺序建轨）。
+输出 ChatCut edit_item 的 adds，分四批写入 /tmp/ep05/lesson_p{1,2,3,4}.json（底层 / 头像 / 字幕 / 讲解头像，空时间线按出现顺序建轨）。
+左下角：全片常驻墨灵版蕾姐头像；蕾姐说话时叠上「讲解头像」MG（同圆心、略大、带声波），跟读和思考停顿时回到静态头像。
 """
 import json, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,7 +20,10 @@ MG = dict(title="dff478c74e", intro="40ec7aa7b2", card="ea53b2d94f", hanzi="2ed6
           quiz="154876f011", end="95bdd3d659", sub="03ac03b814")
 CH = dict(xiaoyan="7161f1ecaf", tuantuan="e27bb77d5a", darong="1b6dda1d83", guazhanggui="6ec5d2fa90", adeng="50dc182e37",
           moxiansheng="329667733a", luming="5578831c7a", heweng="4280771742", wuming="3c4ccfff17")
-LOGO = "5c244a6699"
+LOGO = "476e1866c4"
+SPEAK = "87e59d4419"
+# 静态头像圆心；说话时讲解头像以同一圆心叠在上面
+AV_X, AV_Y = 128, 940
 
 adds, subs, deco, marks, SUBI = [], [], [], {}, {}
 
@@ -166,7 +170,23 @@ for name, a, b in merged:
     adds.append({"type": "image", "assetId": CH[name], "fromFrame": fr(a), "durationInFrames": fr(b) - fr(a), "trackId": "V2",
                  "fit": "contain", "left": 1615, "top": 640, "width": 280, "height": 420, "fadeIn": 0.4})
 logo = [{"type": "image", "assetId": LOGO, "fromFrame": 0, "durationInFrames": fr(TOTAL), "trackId": "V3",
-         "left": 40, "top": 872, "width": 176, "height": 176, "fadeIn": 0.5}]
+         "left": AV_X - 88, "top": AV_Y - 88, "width": 176, "height": 176, "fadeIn": 0.5}]
+
+
+def speaking_spans(items, join=1.2, pre=0.1, post=0.25):
+    """蕾姐说话的区间：相邻配音间隔不超过 join 秒的合并，跟读 / 思考停顿时回到静态头像。"""
+    clips = sorted((a["fromFrame"] / FPS, (a["fromFrame"] + a["durationInFrames"]) / FPS)
+                   for a in items if a["type"] == "audio")
+    spans = []
+    for a, b in clips:
+        if spans and a - spans[-1][1] <= join: spans[-1][1] = b
+        else: spans.append([a, b])
+    return [(max(0.0, a - pre), b + post) for a, b in spans]
+
+
+speak = [{"type": "motion-graphic", "assetId": SPEAK, "fromFrame": fr(a), "durationInFrames": fr(b) - fr(a),
+          "trackId": "V5", "left": AV_X - 150, "top": AV_Y - 140, "width": 300, "height": 270,
+          "propertyOverrides": {"photo": LOGO}} for a, b in speaking_spans(adds)]
 sub_adds = [{"type": "motion-graphic", "assetId": MG["sub"], "fromFrame": fr(a), "durationInFrames": fr(b) - fr(a),
              "trackId": "V4", "left": 340, "top": 905, "width": 1240, "height": 150, "propertyOverrides": {"zh": zh, "en": en}}
             for a, b, zh, en in subs]
@@ -175,5 +195,6 @@ if __name__ == "__main__":
     print("total", round(TOTAL, 2), "items", len(adds) + 1 + len(sub_adds), "subs", len(subs), "deco", len(merged))
     for k, v in marks.items(): print(f"  {k}: {int(v // 60)}:{v % 60:05.2f}")
     os.makedirs("/tmp/ep05", exist_ok=True)
-    for n, part in enumerate((adds, logo, sub_adds), 1):
+    print("speaking spans", len(speak), "longest", max(x["durationInFrames"] for x in speak) / FPS)
+    for n, part in enumerate((adds, logo, sub_adds, speak), 1):
         json.dump(part, open(f"/tmp/ep05/lesson_p{n}.json", "w"), ensure_ascii=False, separators=(",", ":"))
